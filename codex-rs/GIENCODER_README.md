@@ -75,7 +75,7 @@ git tag giencoder-backup-before-$(date +%Y%m%d)
 
 ```bash
 # 4. 拉取上游最新代码和 tag
-git fetch origin
+git fetch origin --tags
 
 # 5. 确认目标版本 tag 存在
 git tag | grep "rust-v0.135"
