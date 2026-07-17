@@ -3,6 +3,7 @@ name = "codex-execpolicy"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+repository.workspace = true
 description = "Codex exec policy: prefix-based Starlark rules for command decisions."
 
 [lib]
@@ -31,3 +32,7 @@ thiserror = { workspace = true }
 [dev-dependencies]
 pretty_assertions = { workspace = true }
 tempfile = { workspace = true }
+
+# gienx: 不作为独立发行包，仅 codex-cli(codex) 发版
+[package.metadata.dist]
+dist = false

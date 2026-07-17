@@ -132,6 +132,8 @@ version = "0.142.4"
 # edition.
 edition = "2024"
 license = "Apache-2.0"
+# gienx fork: 上游仓库地址，cargo-dist 生成 GitHub CI 与安装脚本时需要
+repository = "https://github.com/zhaocaho/gienx"
 
 [workspace.dependencies]
 # Internal
@@ -541,6 +543,11 @@ strip = false
 debug = "limited"
 inherits = "test"
 opt-level = 0
+
+# The profile that 'dist' will build with
+[profile.dist]
+inherits = "release"
+lto = "thin"
 
 [patch.crates-io]
 # Uncomment to debug local changes.

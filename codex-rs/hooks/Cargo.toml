@@ -1,6 +1,7 @@
 [package]
 edition.workspace = true
 license.workspace = true
+repository.workspace = true
 name = "codex-hooks"
 version.workspace = true
 
@@ -33,3 +34,7 @@ uuid = { workspace = true, features = ["v4"] }
 pretty_assertions = { workspace = true }
 tempfile = { workspace = true }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "time"] }
+
+# gienx: 不作为独立发行包，仅 codex-cli(codex) 发版
+[package.metadata.dist]
+dist = false

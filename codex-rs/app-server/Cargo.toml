@@ -3,6 +3,7 @@ name = "codex-app-server"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+repository.workspace = true
 
 [[bin]]
 name = "codex-app-server"
@@ -132,3 +133,7 @@ tokio-tungstenite = { workspace = true }
 tracing-opentelemetry = { workspace = true }
 url = { workspace = true }
 wiremock = { workspace = true }
+
+# gienx: 不作为独立发行包，仅 codex-cli(codex) 发版
+[package.metadata.dist]
+dist = false

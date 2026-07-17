@@ -1,6 +1,7 @@
 [package]
 edition.workspace = true
 license.workspace = true
+repository.workspace = true
 name = "codex-shell-escalation"
 version.workspace = true
 
@@ -39,3 +40,7 @@ tempfile = { workspace = true }
 
 [lib]
 doctest = false
+
+# gienx: 不作为独立发行包，仅 codex-cli(codex) 发版
+[package.metadata.dist]
+dist = false

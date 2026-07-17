@@ -3,6 +3,7 @@ name = "codex-stdio-to-uds"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+repository.workspace = true
 
 [[bin]]
 name = "codex-stdio-to-uds"
@@ -31,3 +32,7 @@ tokio = { workspace = true, features = [
 codex-utils-cargo-bin = { workspace = true }
 pretty_assertions = { workspace = true }
 tempfile = { workspace = true }
+
+# gienx: 不作为独立发行包，仅 codex-cli(codex) 发版
+[package.metadata.dist]
+dist = false

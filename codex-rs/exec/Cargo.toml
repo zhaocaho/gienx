@@ -3,6 +3,7 @@ name = "codex-exec"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+repository.workspace = true
 autotests = false
 
 [[bin]]
@@ -76,3 +77,7 @@ tracing-opentelemetry = { workspace = true }
 uuid = { workspace = true }
 walkdir = { workspace = true }
 wiremock = { workspace = true }
+
+# gienx: 不作为独立发行包，仅 codex-cli(codex) 发版
+[package.metadata.dist]
+dist = false

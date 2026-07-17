@@ -3,6 +3,7 @@ name = "codex-tui"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+repository.workspace = true
 autobins = false
 
 [[bin]]
@@ -162,3 +163,7 @@ serial_test = { workspace = true }
 vt100 = { workspace = true }
 uuid = { workspace = true }
 wiremock = { workspace = true }
+
+# gienx: 不作为独立发行包，仅 codex-cli(codex) 发版
+[package.metadata.dist]
+dist = false
