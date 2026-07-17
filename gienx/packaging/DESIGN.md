@@ -93,9 +93,10 @@
 
 ## 5. 触发与版本
 
-- **触发**：打 tag `gienx-v<version>`（如 `gienx-v0.1.0`）并推送 → 触发 release workflow。
-- 版本取自 `codex-rs/Cargo.toml` 的 `workspace.package.version`（当前 `0.142.4`）。gienx 自定义版本可在此基础上自定（如 `0.142.4.1-gienx` 或独立递增），需与 tag 一致。
-- **不沿用上游 `rust-v*` tag 名**，避免与 `upstream` fetch 的 tag 冲突；统一用 `gienx-v*` 前缀。
+- **触发**：打版本 tag 并推送 → 触发 `release.yml`。
+- **tag 格式**：必须是 cargo-dist 能解析的版本 tag，即 `v<version>`（如 `v0.142.4-beta.1`）或包作用域 `codex-cli/v<version>`。**不能加 `gienx-` 等前缀**——cargo-dist 会把前缀字符当成版本号导致解析失败。
+- **与上游不冲突**：上游 openai/codex 用 `rust-v*` 前缀打 tag，所以 gienx 用纯 `v<version>` 不会撞。
+- **版本须与 tag 精确匹配**：tag 的版本必须等于 `codex-rs/Cargo.toml` 的 `workspace.package.version`（含 prerelease 后缀）。发 prerelease 就把版本设成 `0.142.4-beta.1` 再打 `v0.142.4-beta.1`；发正式版用 `0.142.4` + `v0.142.4`。
 - 流水线产出：各平台包 + `SHA256SUMS` 校验 + 一键安装脚本（`curl … | sh` / PowerShell）。
 
 ---
@@ -179,7 +180,7 @@ install.sh / install.ps1 (cargo-dist 生成)
 
 打包方案与 `codex-rs/UPGRADE.md` 的 rebase-onto-tag 升级机制解耦：
 - 升级只改源码基线（rebase 到新上游 tag）。
-- 打包在新基线上打 `gienx-v*` tag 即可发版。
+- 打包在新基线上打 `v<version>` tag（见 §5 格式要求）即可发版。
 - 升级后**必须重新核对 §3 二进制清单**（上游可能增删 `[[bin]]`），否则矩阵可能漏发或编不过。
 
 ---
@@ -207,7 +208,8 @@ install.sh / install.ps1 (cargo-dist 生成)
 
 **首次试发命令**（确认仓库已推送、CI 通后）：
 ```bash
-git tag gienx-v0.142.4
-git push origin gienx-v0.142.4
+# 版本已是 0.142.4-beta.1，打对应 prerelease tag
+git tag v0.142.4-beta.1
+git push origin v0.142.4-beta.1
 # 到 GitHub Actions 看 Release 流水线；成功后 Releases 页出现各平台包
 ```
