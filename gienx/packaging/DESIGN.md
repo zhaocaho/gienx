@@ -203,13 +203,31 @@ install.sh / install.ps1 (cargo-dist 生成)
 - **§4 universal2 暂未启用**：v0.32 的 `universal-binaries` 键被接受但未合并出 universal archive，行为与文档不符。首版按设计允许的兜底——**macOS 双架构独立包**（arm64、x86_64 各一个 archive）。universal2 留待后续验证正确语法或升级 cargo-dist 版本后再开。
 - **§3 二进制范围**：用 `[package.metadata.dist] dist = false` 排除 23 个含二进制的 crate，**仅发 `codex-cli`（`codex`）**。每个平台产出一个含 `codex`（Windows 为 `codex.exe`）+ `CHANGELOG/LICENSE/README` 的压缩包，附 `sha256` 校验和 shell/powershell 安装脚本。
 - **运行时辅助二进制（sandbox/apply_patch 等）暂未随包发布**：这些 crate 设了 `dist=false`。`codex` 二进制已把 TUI/CLI/exec/apply-patch 逻辑作为库链接进去；但 Linux 的 `codex-linux-sandbox`、Windows 的 `codex-windows-sandbox-setup` 是独立进程，是否需要随 `codex` 一起分发待运行时验证（设计 §3.2 待办）。
-- **触发**：打版本 tag（如 `gienx-v0.142.4`）即触发；workflow 也对 PR 跑轻量 `dist plan`（不跑全矩阵）。
-- **未做真机跨平台构建验证**：本地仅 `dist plan` + `dist generate --check` 通过；完整跨平台构建验证靠打 tag 跑 CI。musl/windows 是否一次过需在首次发版时确认，失败则按 §10 回退（如去 musl）。
+- **触发**：打版本 tag `v<version>` 即触发；workflow 也对 PR 跑轻量 `dist plan`（不跑全矩阵）。
 
 **首次试发命令**（确认仓库已推送、CI 通后）：
 ```bash
-# 版本已是 0.142.4-beta.1，打对应 prerelease tag
-git tag v0.142.4-beta.1
-git push origin v0.142.4-beta.1
+# 版本已是 0.142.4-beta.2，打对应 prerelease tag
+git tag v0.142.4-beta.2
+git push origin v0.142.4-beta.2
 # 到 GitHub Actions 看 Release 流水线；成功后 Releases 页出现各平台包
 ```
+
+---
+
+## 14. 首跑结果与修复（2026-07-17）
+
+首次试发 `v0.142.4-beta.1`（run 29571310103）结果：Windows x64 ✅、macOS x86_64 ✅ 过；**macOS aarch64 ❌、Linux gnu ❌、Linux musl ❌** 失败。根因都是 cargo-dist 默认 `cargo build --workspace` 连带编了与 `codex` 无关的孤立 workspace member：
+
+| 平台 | 失败根因 |
+|------|----------|
+| macOS aarch64 | `realtime-webrtc` 的 livekit **C++ FFI** 编不过（C++ 模板实例化错误）。该 crate 无人依赖。 |
+| Linux gnu | `codex-bwrap` 的 build.rs 编译 bubblewrap，缺系统库 `libcap`（pkg-config 找不到）。该 crate 无人依赖。 |
+| Linux musl | `can't find crate for core`——musl 的 rust-std 未就绪（musl 静态工具链问题，设计 §4 标记为可选）。 |
+
+**修复**（提交见 gienx 分支 `v0.142.4-beta.2`）：
+1. dist-workspace.toml 加 **`precise-builds = true`**：dist 改用 `cargo build --package codex-cli`（本地 `-v` 已验证：`cargo build --profile dist --target <t> --package codex-cli`），不再 `--workspace` → 跳过 `realtime-webrtc`、`bwrap` 等 codex 不依赖的孤立 crate，根因 1、2 同时消除。
+2. **移除 `x86_64-unknown-linux-musl` target**：musl std/工具链问题留待后续（设计 §4 允许）。当前矩阵为 4 平台：mac arm64 / mac x86_64 / win x64 / linux-gnu-x64。
+
+**未随 codex 发布的运行时辅助二进制**仍是 §3.2 待办（`codex` 是否需要 `codex-linux-sandbox` 等随包，待运行时验证）。
+
