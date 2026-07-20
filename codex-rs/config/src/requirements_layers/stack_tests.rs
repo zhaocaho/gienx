@@ -111,7 +111,7 @@ allow_remote_control = false
 #[test]
 fn composition_strategy_applies_to_non_cloud_layers() {
     let mdm_source = RequirementSource::MdmManagedPreferences {
-        domain: "com.openai.codex".to_string(),
+        domain: "com.openai.gienx".to_string(),
         key: "requirements_toml_base64".to_string(),
     };
     let system_file = if cfg!(windows) {

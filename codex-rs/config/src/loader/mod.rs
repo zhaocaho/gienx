@@ -40,6 +40,7 @@ use codex_protocol::config_types::TrustLevel;
 use codex_protocol::protocol::AskForApproval;
 use codex_utils_absolute_path::AbsolutePathBuf;
 use codex_utils_absolute_path::AbsolutePathBufGuard;
+use codex_utils_absolute_path::BRAND_HOME_DIR_SEGMENT;
 use codex_utils_path_uri::PathUri;
 use dunce::canonicalize as normalize_path;
 use serde::Deserialize;
@@ -100,8 +101,8 @@ async fn first_layer_config_error_from_entries(layers: &[ConfigLayerEntry]) -> O
 /// - user      `${CODEX_HOME}/config.toml`
 /// - profile   `${CODEX_HOME}/<name>.config.toml`, when selected
 /// - cwd       `${PWD}/config.toml` (loaded but disabled when the directory is untrusted)
-/// - tree      parent directories up to root looking for `./.codex/config.toml` (loaded but disabled when untrusted)
-/// - repo      `$(git rev-parse --show-toplevel)/.codex/config.toml` (loaded but disabled when untrusted)
+/// - tree      parent directories up to root looking for `./.gienx/config.toml` (loaded but disabled when untrusted)
+/// - repo      `$(git rev-parse --show-toplevel)/.gienx/config.toml` (loaded but disabled when untrusted)
 /// - runtime   e.g., --config flags, model selector in UI
 ///
 /// (*) Only available on macOS via managed device profiles.
@@ -912,7 +913,7 @@ impl ProjectTrustContext {
         }
 
         let relative_dir = dir.as_path().strip_prefix(checkout_root.as_path()).ok()?;
-        Some(repo_root.join(relative_dir).join(".codex"))
+        Some(repo_root.join(relative_dir).join(BRAND_HOME_DIR_SEGMENT))
     }
 }
 
@@ -1221,7 +1222,7 @@ async fn load_project_layers(
     let mut layers = Vec::new();
     let mut startup_warnings = Vec::new();
     for dir in dirs {
-        let dot_codex_abs = dir.join(".codex");
+        let dot_codex_abs = dir.join(BRAND_HOME_DIR_SEGMENT);
         let dot_codex_uri = PathUri::from_abs_path(&dot_codex_abs);
         if !fs
             .get_metadata(&dot_codex_uri, /*sandbox*/ None)

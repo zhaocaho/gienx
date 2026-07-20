@@ -430,10 +430,10 @@ mod tests {
 
     #[test]
     fn helper_bin_dir_is_under_sandbox_bin() {
-        let codex_home = Path::new(r"C:\Users\example\.codex");
+        let codex_home = Path::new(r"C:\Users\example\.gienx");
 
         assert_eq!(
-            PathBuf::from(r"C:\Users\example\.codex\.sandbox-bin"),
+            PathBuf::from(r"C:\Users\example\.gienx\.sandbox-bin"),
             helper_bin_dir(codex_home)
         );
     }

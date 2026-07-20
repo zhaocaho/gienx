@@ -1,3 +1,4 @@
+use codex_utils_absolute_path::BRAND_HOME_DIR_SEGMENT;
 use codex_windows_sandbox::log_note;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::Hash;
@@ -16,7 +17,7 @@ fn junction_name_for_path(path: &Path) -> String {
 
 fn junction_root_for_userprofile(userprofile: &str) -> PathBuf {
     PathBuf::from(userprofile)
-        .join(".codex")
+        .join(BRAND_HOME_DIR_SEGMENT)
         .join(".sandbox")
         .join("cwd")
 }

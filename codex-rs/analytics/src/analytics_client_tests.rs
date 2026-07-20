@@ -967,7 +967,7 @@ fn expected_absolute_path(path: &PathBuf) -> String {
 #[test]
 fn normalize_path_for_skill_id_repo_scoped_uses_relative_path() {
     let repo_root = PathBuf::from("/repo/root");
-    let skill_path = PathBuf::from("/repo/root/.codex/skills/doc/SKILL.md");
+    let skill_path = PathBuf::from("/repo/root/.gienx/skills/doc/SKILL.md");
 
     let path = normalize_path_for_skill_id(
         Some("https://example.com/repo.git"),
@@ -975,12 +975,12 @@ fn normalize_path_for_skill_id_repo_scoped_uses_relative_path() {
         skill_path.as_path(),
     );
 
-    assert_eq!(path, ".codex/skills/doc/SKILL.md");
+    assert_eq!(path, ".gienx/skills/doc/SKILL.md");
 }
 
 #[test]
 fn normalize_path_for_skill_id_user_scoped_uses_absolute_path() {
-    let skill_path = PathBuf::from("/Users/abc/.codex/skills/doc/SKILL.md");
+    let skill_path = PathBuf::from("/Users/abc/.gienx/skills/doc/SKILL.md");
 
     let path = normalize_path_for_skill_id(
         /*repo_url*/ None,
@@ -1009,7 +1009,7 @@ fn normalize_path_for_skill_id_admin_scoped_uses_absolute_path() {
 #[test]
 fn normalize_path_for_skill_id_repo_root_not_in_skill_path_uses_absolute_path() {
     let repo_root = PathBuf::from("/repo/root");
-    let skill_path = PathBuf::from("/other/path/.codex/skills/doc/SKILL.md");
+    let skill_path = PathBuf::from("/other/path/.gienx/skills/doc/SKILL.md");
 
     let path = normalize_path_for_skill_id(
         Some("https://example.com/repo.git"),
@@ -3265,7 +3265,7 @@ async fn reducer_ingests_skill_invoked_fact() {
         thread_id: "thread-1".to_string(),
         turn_id: "turn-1".to_string(),
     };
-    let skill_path = PathBuf::from("/Users/abc/.codex/skills/doc/SKILL.md");
+    let skill_path = PathBuf::from("/Users/abc/.gienx/skills/doc/SKILL.md");
     let expected_skill_id = skill_id_for_local_skill(
         /*repo_url*/ None,
         /*repo_root*/ None,
@@ -3320,7 +3320,7 @@ async fn reducer_includes_plugin_id_for_plugin_skill_invocations() {
         turn_id: "turn-1".to_string(),
     };
     let skill_path =
-        PathBuf::from("/Users/abc/.codex/plugins/cache/test/sample/skills/doc/SKILL.md");
+        PathBuf::from("/Users/abc/.gienx/plugins/cache/test/sample/skills/doc/SKILL.md");
 
     reducer
         .ingest(

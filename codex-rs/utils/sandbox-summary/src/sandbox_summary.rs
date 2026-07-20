@@ -156,9 +156,9 @@ mod tests {
         })
         .unwrap();
         let hidden_root = AbsolutePathBuf::try_from(if cfg!(windows) {
-            "C:\\Users\\test\\.codex\\memories"
+            "C:\\Users\\test\\.gienx\\memories"
         } else {
-            "/Users/test/.codex/memories"
+            "/Users/test/.gienx/memories"
         })
         .unwrap();
         let profile = PermissionProfile::workspace_write_with(

@@ -3918,6 +3918,7 @@ dependencies = [
  "clap",
  "codex-git-utils",
  "codex-protocol",
+ "codex-utils-home-dir",
  "dirs",
  "libsqlite3-sys",
  "log",

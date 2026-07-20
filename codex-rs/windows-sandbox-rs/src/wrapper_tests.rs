@@ -66,7 +66,7 @@ fn windows_wrapper_args_round_trip() {
         Some(write_roots_override.as_slice()),
         deny_read_paths_override.as_slice(),
         deny_write_paths_override.as_slice(),
-        Path::new(r"C:\Users\me\.codex"),
+        Path::new(r"C:\Users\me\.gienx"),
     );
 
     assert_eq!(args[0], CODEX_WINDOWS_SANDBOX_ARG1);

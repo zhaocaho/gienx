@@ -13,6 +13,14 @@ use ts_rs::TS;
 
 mod absolutize;
 
+/// 品牌配置目录段（含点号）。统一用于：
+/// - 全局 home 默认目录 `~/.<BRAND_HOME_DIR_SEGMENT>`
+/// - 仓内项目级配置目录 `<repo>/.<BRAND_HOME_DIR_SEGMENT>/`
+/// - 沙箱对该目录的只读保护路径名
+///
+/// 未来再改名：改这一行值即可（Rust 范围内所有站点自动跟随）。
+pub const BRAND_HOME_DIR_SEGMENT: &str = ".gienx";
+
 /// A path that is guaranteed to be absolute and normalized (though it is not
 /// guaranteed to be canonicalized or exist on the filesystem).
 ///

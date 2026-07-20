@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
-# 下载 gienx 的 codex 二进制(mac arm / mac intel / windows / linux)，
-# 解压后只保留 codex 二进制本身(保持原名 codex / codex.exe)，
+# 下载 gienx 的二进制(mac arm / mac intel / windows / linux)，
+# 解压后只保留 gienx 二进制本身(保持原名 gienx / gienx.exe)，
 # 按平台分到各自子目录里，丢弃 CHANGELOG/LICENSE/README。
 #
 # 默认下载最新的 release；若仓库只有预发布版本(无正式 release)，
@@ -66,10 +66,10 @@ fi
 
 # ---- 平台清单: archive 文件名 | 包内二进制名 | 平台目录名 ----
 PLATFORMS=(
-  "codex-cli-aarch64-apple-darwin.tar.xz|codex|darwin-arm64"
-  "codex-cli-x86_64-apple-darwin.tar.xz|codex|darwin-x86_64"
-  "codex-cli-x86_64-pc-windows-msvc.zip|codex.exe|windows-x86_64"
-  "codex-cli-x86_64-unknown-linux-gnu.tar.xz|codex|linux-x86_64"
+  "codex-cli-aarch64-apple-darwin.tar.xz|gienx|darwin-arm64"
+  "codex-cli-x86_64-apple-darwin.tar.xz|gienx|darwin-x86_64"
+  "codex-cli-x86_64-pc-windows-msvc.zip|gienx.exe|windows-x86_64"
+  "codex-cli-x86_64-unknown-linux-gnu.tar.xz|gienx|linux-x86_64"
 )
 
 mkdir -p "$OUT_DIR"

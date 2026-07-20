@@ -715,7 +715,7 @@ pub struct Config {
     /// appends one extra argument containing a JSON payload describing the
     /// event.
     ///
-    /// Example `~/.codex/config.toml` snippet:
+    /// Example `~/.gienx/config.toml` snippet:
     ///
     /// ```toml
     /// notify = ["notify-send", "Codex"]
@@ -869,7 +869,7 @@ pub struct Config {
     /// Memories subsystem settings.
     pub memories: MemoriesConfig,
 
-    /// Directory containing all Codex state (defaults to `~/.codex` but can be
+    /// Directory containing all Codex state (defaults to `~/.gienx` but can be
     /// overridden by the `CODEX_HOME` environment variable).
     pub codex_home: AbsolutePathBuf,
 
@@ -893,7 +893,7 @@ pub struct Config {
     /// Effective config lock used for strict replay validation.
     pub config_lock_toml: Option<Arc<ConfigLockfileToml>>,
 
-    /// Settings that govern if and what will be written to `~/.codex/history.jsonl`.
+    /// Settings that govern if and what will be written to `~/.gienx/history.jsonl`.
     pub history: History,
 
     /// When true, session is not persisted on disk. Default to `false`
@@ -2001,7 +2001,7 @@ pub async fn load_global_mcp_servers(
     // result.
     let cli_overrides = Vec::<(String, TomlValue)>::new();
     // There is no cwd/project context for this query, so this will not include
-    // MCP servers defined in in-repo .codex/ folders.
+    // MCP servers defined in in-repo .gienx/ folders.
     let cwd: Option<AbsolutePathBuf> = None;
     let config_layer_stack = load_config_layers_state(
         LOCAL_FS.as_ref(),
@@ -4299,7 +4299,7 @@ fn normalize_guardian_policy_config(value: Option<&str>) -> Option<String> {
 
 /// Returns the path to the Codex configuration directory, which can be
 /// specified by the `CODEX_HOME` environment variable. If not set, defaults to
-/// `~/.codex`.
+/// `~/.gienx`.
 ///
 /// - If `CODEX_HOME` is set, the value must exist and be a directory. The
 ///   value will be canonicalized and this function will Err otherwise.

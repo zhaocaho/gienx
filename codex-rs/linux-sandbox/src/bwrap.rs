@@ -3,7 +3,7 @@
 //! This module mirrors the semantics used by the macOS Seatbelt sandbox:
 //! - the filesystem is read-only by default,
 //! - explicit writable roots are layered on top, and
-//! - sensitive subpaths such as `.git`, `.agents`, and `.codex` remain
+//! - sensitive subpaths such as `.git`, `.agents`, and `.gienx` remain
 //!   read-only even when their parent root is writable.
 //!
 //! The overall Linux sandbox is composed of:
@@ -33,6 +33,7 @@ use codex_protocol::protocol::FileSystemSandboxPolicy;
 use codex_protocol::protocol::FileSystemSpecialPath;
 use codex_protocol::protocol::WritableRoot;
 use codex_utils_absolute_path::AbsolutePathBuf;
+use codex_utils_absolute_path::BRAND_HOME_DIR_SEGMENT;
 use globset::GlobBuilder;
 use globset::GlobSet;
 use globset::GlobSetBuilder;
@@ -405,7 +406,7 @@ fn create_filesystem_args(
                 };
                 // Automatic repo-metadata read masks are skipped here so the
                 // metadata handling below can apply the root-scoped
-                // protection consistently for `.git`, `.agents`, and `.codex`.
+                // protection consistently for `.git`, `.agents`, and `.gienx`.
                 // User-authored `read` rules for other subpaths and `none`
                 // rules should keep their normal bwrap behavior, which can mask
                 // the first missing component to prevent creation under writable
@@ -413,7 +414,7 @@ fn create_filesystem_args(
                 let project_subpath = subpath.as_path();
                 if project_subpath != Path::new(".git")
                     && project_subpath != Path::new(".agents")
-                    && project_subpath != Path::new(".codex")
+                    && project_subpath != Path::new(BRAND_HOME_DIR_SEGMENT)
                 {
                     return None;
                 }
@@ -1577,7 +1578,7 @@ mod tests {
         let temp_dir = TempDir::new().expect("temp dir");
         let logical_home = temp_dir.path().join("home");
         let real_codex = temp_dir.path().join("real-codex");
-        let logical_codex = logical_home.join(".codex");
+        let logical_codex = logical_home.join(".gienx");
         let real_memories = real_codex.join("memories");
         let logical_memories = logical_codex.join("memories");
         std::fs::create_dir_all(&logical_home).expect("create logical home");
@@ -1718,7 +1719,7 @@ mod tests {
         assert_empty_file_bound_without_perms(&args.args, &blocked);
         assert_empty_directory_mounted_read_only(&args.args, &workspace.join(".git"));
         assert_empty_directory_mounted_read_only(&args.args, &workspace.join(".agents"));
-        assert_empty_directory_mounted_read_only(&args.args, &workspace.join(".codex"));
+        assert_empty_directory_mounted_read_only(&args.args, &workspace.join(".gienx"));
         assert_eq!(args.preserved_files.len(), 1);
         assert_eq!(
             synthetic_mount_target_paths(&args),
@@ -1726,7 +1727,7 @@ mod tests {
                 blocked.clone(),
                 workspace.join(".git"),
                 workspace.join(".agents"),
-                workspace.join(".codex"),
+                workspace.join(".gienx"),
             ]
         );
         assert!(
@@ -1759,13 +1760,13 @@ mod tests {
 
         assert_empty_file_bound_without_perms(&args.args, &dot_git);
         assert_empty_directory_mounted_read_only(&args.args, &workspace.join(".agents"));
-        assert_empty_directory_mounted_read_only(&args.args, &workspace.join(".codex"));
+        assert_empty_directory_mounted_read_only(&args.args, &workspace.join(".gienx"));
         assert_eq!(
             synthetic_mount_target_paths(&args),
             vec![
                 dot_git.clone(),
                 workspace.join(".agents"),
-                workspace.join(".codex"),
+                workspace.join(".gienx"),
             ]
         );
         assert!(
@@ -1804,7 +1805,7 @@ mod tests {
         let args = create_filesystem_args(&policy, &workspace, NO_UNREADABLE_GLOB_SCAN_MAX_DEPTH)
             .expect("filesystem args");
         assert_empty_directory_mounted_read_only(&args.args, &workspace.join(".agents"));
-        assert_empty_directory_mounted_read_only(&args.args, &workspace.join(".codex"));
+        assert_empty_directory_mounted_read_only(&args.args, &workspace.join(".gienx"));
         let dot_git_str = path_to_string(&dot_git);
         assert!(
             !args
@@ -1851,7 +1852,7 @@ mod tests {
             create_filesystem_args(&policy, &link_workspace, NO_UNREADABLE_GLOB_SCAN_MAX_DEPTH)
                 .expect("filesystem args");
         assert_empty_directory_mounted_read_only(&args.args, &workspace.join(".agents"));
-        assert_empty_directory_mounted_read_only(&args.args, &workspace.join(".codex"));
+        assert_empty_directory_mounted_read_only(&args.args, &workspace.join(".gienx"));
         let dot_git_str = path_to_string(&dot_git);
         assert!(
             !args
@@ -1935,7 +1936,7 @@ mod tests {
             },
             FileSystemSandboxEntry {
                 path: FileSystemPath::Special {
-                    value: FileSystemSpecialPath::project_roots(Some(".codex".into())),
+                    value: FileSystemSpecialPath::project_roots(Some(BRAND_HOME_DIR_SEGMENT.into())),
                 },
                 access: FileSystemAccessMode::Read,
             },
@@ -1946,7 +1947,7 @@ mod tests {
                 .expect("filesystem args");
         let dot_git = path_to_string(&temp_dir.path().join(".git"));
         let dot_agents = path_to_string(&temp_dir.path().join(".agents"));
-        let dot_codex = path_to_string(&temp_dir.path().join(".codex"));
+        let dot_codex = path_to_string(&temp_dir.path().join(".gienx"));
 
         assert_empty_directory_mounted_read_only(&args.args, Path::new(&dot_git));
         assert_empty_directory_mounted_read_only(&args.args, Path::new(&dot_agents));
@@ -2023,10 +2024,10 @@ mod tests {
             vec![
                 PathBuf::from("/.git"),
                 PathBuf::from("/.agents"),
-                PathBuf::from("/.codex"),
+                PathBuf::from("/.gienx"),
                 PathBuf::from("/dev/.git"),
                 PathBuf::from("/dev/.agents"),
-                PathBuf::from("/dev/.codex"),
+                PathBuf::from("/dev/.gienx"),
             ]
         );
         assert_eq!(
@@ -2061,9 +2062,9 @@ mod tests {
                 "--perms".to_string(),
                 "555".to_string(),
                 "--tmpfs".to_string(),
-                "/.codex".to_string(),
+                "/.gienx".to_string(),
                 "--remount-ro".to_string(),
-                "/.codex".to_string(),
+                "/.gienx".to_string(),
                 // Rebind /dev after the root bind so device nodes remain
                 // writable/usable inside the writable root.
                 "--bind".to_string(),
@@ -2086,9 +2087,9 @@ mod tests {
                 "--perms".to_string(),
                 "555".to_string(),
                 "--tmpfs".to_string(),
-                "/dev/.codex".to_string(),
+                "/dev/.gienx".to_string(),
                 "--remount-ro".to_string(),
-                "/dev/.codex".to_string(),
+                "/dev/.gienx".to_string(),
             ]
         );
     }

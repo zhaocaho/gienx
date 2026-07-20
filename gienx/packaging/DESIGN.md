@@ -60,17 +60,17 @@
 ## 3. 打包对象范围
 
 ### 3.1 主发行二进制
-- `codex`（`cli/`，CLI 入口，必发）
+- `gienx`（`cli/`，CLI 入口，必发；crate/包名仍为 `codex-cli`）
 
 ### 3.2 运行时依赖二进制（按需随主包）
-`codex` 运行时可能调用：`apply_patch`、`codex-exec`、`codex-execpolicy`、`codex-mcp-server`、`codex-responses-api-proxy`、`codex-app-server`。需在实施阶段用 `cargo --bin` 或 `cargo-dist` 的 `binaries` 配置确认实际运行时依赖集，避免漏发。
+`gienx` 运行时可能调用：`apply_patch`、`codex-exec`、`codex-execpolicy`、`codex-mcp-server`、`codex-responses-api-proxy`、`codex-app-server`。需在实施阶段用 `cargo --bin` 或 `cargo-dist` 的 `binaries` 配置确认实际运行时依赖集，避免漏发。
 
 ### 3.3 平台专属二进制（仅对应平台编入）
 - Linux：`codex-linux-sandbox`、`bwrap`
 - Windows：`codex-windows-sandbox-setup`、`codex-command-runner`
 
 ### 3.4 排除项（不进发行包）
-`md-events`、`codex-write-config-schema`、`codex-app-server-test-notify-capture`、`codex-execpolicy-legacy`、`codex-tui`（若 TUI 已并入 `codex` 主二进制则单独排除）、`codex-code-mode-host`（按需评估）、`codex-stdio-to-uds`、`codex-file-search`、`codex-execve-wrapper`（按运行时是否需要评估）。
+`md-events`、`codex-write-config-schema`、`codex-app-server-test-notify-capture`、`codex-execpolicy-legacy`、`codex-tui`（若 TUI 已并入 `gienx` 主二进制则单独排除）、`codex-code-mode-host`（按需评估）、`codex-stdio-to-uds`、`codex-file-search`、`codex-execve-wrapper`（按运行时是否需要评估）。
 
 > 实施时通过 `[workspace.metadata.dist]` 的 `binaries`/`include` 配置或显式 `[package.metadata.dist]` 精确控制，避免平台专属二进制在不支持的目标上编译失败。
 
@@ -126,7 +126,7 @@
    - `cargo-dist version = "0.x"`（pin 一个版本）
    - `targets = [...]`（§4 矩阵）
    - `include = ["UPGRADE.md", ...]`（附带文档）
-   - `universal-binaries = [["codex"]]`（macOS 单二进制合并）
+   - `universal-binaries = [["gienx"]]`（macOS 单二进制合并）
    - `installers = ["shell", "powershell"]`（生成安装脚本）
    - `dist = true`
 3. **二进制范围控制**：在 `[workspace.metadata.dist]` 显式声明要发的二进制，或用 `precise-builds`/bin 列表排除开发用二进制，验证平台专属二进制不破坏其他 target。
@@ -202,7 +202,7 @@ install.sh / install.ps1 (cargo-dist 生成)
 - **§6 子目录问题已解决**：在**仓库根**放 `dist-workspace.toml`，`[workspace] members = ["cargo:codex-rs"]` 显式指向 codex-rs cargo 工作区。`dist` 从仓库根即可找到配置并定位到 codex-rs，**无需** workflow 设 `working-directory: codex-rs`。`dist generate` 生成的 `.github/workflows/release.yml` 直接可用，`dist generate --check` 无漂移。
 - **§4 universal2 暂未启用**：v0.32 的 `universal-binaries` 键被接受但未合并出 universal archive，行为与文档不符。首版按设计允许的兜底——**macOS 双架构独立包**（arm64、x86_64 各一个 archive）。universal2 留待后续验证正确语法或升级 cargo-dist 版本后再开。
 - **§3 二进制范围**：用 `[package.metadata.dist] dist = false` 排除 23 个含二进制的 crate，**仅发 `codex-cli`（`codex`）**。每个平台产出一个含 `codex`（Windows 为 `codex.exe`）+ `CHANGELOG/LICENSE/README` 的压缩包，附 `sha256` 校验和 shell/powershell 安装脚本。
-- **运行时辅助二进制（sandbox/apply_patch 等）暂未随包发布**：这些 crate 设了 `dist=false`。`codex` 二进制已把 TUI/CLI/exec/apply-patch 逻辑作为库链接进去；但 Linux 的 `codex-linux-sandbox`、Windows 的 `codex-windows-sandbox-setup` 是独立进程，是否需要随 `codex` 一起分发待运行时验证（设计 §3.2 待办）。
+- **运行时辅助二进制（sandbox/apply_patch 等）暂未随包发布**：这些 crate 设了 `dist=false`。`gienx` 二进制已把 TUI/CLI/exec/apply-patch 逻辑作为库链接进去；但 Linux 的 `codex-linux-sandbox`、Windows 的 `codex-windows-sandbox-setup` 是独立进程，是否需要随 `gienx` 一起分发待运行时验证（设计 §3.2 待办）。
 - **触发**：打版本 tag `v<version>` 即触发；workflow 也对 PR 跑轻量 `dist plan`（不跑全矩阵）。
 
 **首次试发命令**（确认仓库已推送、CI 通后）：
@@ -217,7 +217,7 @@ git push origin v0.142.4-beta.2
 
 ## 14. 首跑结果与修复（2026-07-17）
 
-首次试发 `v0.142.4-beta.1`（run 29571310103）结果：Windows x64 ✅、macOS x86_64 ✅ 过；**macOS aarch64 ❌、Linux gnu ❌、Linux musl ❌** 失败。根因都是 cargo-dist 默认 `cargo build --workspace` 连带编了与 `codex` 无关的孤立 workspace member：
+首次试发 `v0.142.4-beta.1`（run 29571310103）结果：Windows x64 ✅、macOS x86_64 ✅ 过；**macOS aarch64 ❌、Linux gnu ❌、Linux musl ❌** 失败。根因都是 cargo-dist 默认 `cargo build --workspace` 连带编了与 `gienx` 无关的孤立 workspace member：
 
 | 平台 | 失败根因 |
 |------|----------|
@@ -229,5 +229,5 @@ git push origin v0.142.4-beta.2
 1. dist-workspace.toml 加 **`precise-builds = true`**：dist 改用 `cargo build --package codex-cli`（本地 `-v` 已验证：`cargo build --profile dist --target <t> --package codex-cli`），不再 `--workspace` → 跳过 `realtime-webrtc`、`bwrap` 等 codex 不依赖的孤立 crate，根因 1、2 同时消除。
 2. **移除 `x86_64-unknown-linux-musl` target**：musl std/工具链问题留待后续（设计 §4 允许）。当前矩阵为 4 平台：mac arm64 / mac x86_64 / win x64 / linux-gnu-x64。
 
-**未随 codex 发布的运行时辅助二进制**仍是 §3.2 待办（`codex` 是否需要 `codex-linux-sandbox` 等随包，待运行时验证）。
+**未随 gienx 发布的运行时辅助二进制**仍是 §3.2 待办（`gienx` 是否需要 `codex-linux-sandbox` 等随包，待运行时验证）。
 

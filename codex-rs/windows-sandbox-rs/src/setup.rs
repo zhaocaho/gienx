@@ -1810,10 +1810,10 @@ mod tests {
         let command_cwd = tmp.path().join("workspace");
         let extra_write_root = tmp.path().join("extra-write-root");
         let command_git = command_cwd.join(".git");
-        let extra_codex = extra_write_root.join(".codex");
+        let extra_codex = extra_write_root.join(".gienx");
         let explicit_deny = tmp.path().join("explicit-deny");
         fs::create_dir_all(&command_git).expect("create command .git");
-        fs::create_dir_all(&extra_codex).expect("create extra .codex");
+        fs::create_dir_all(&extra_codex).expect("create extra .gienx");
         let writable_roots = vec![
             AbsolutePathBuf::from_absolute_path(&extra_write_root).expect("absolute writable root"),
         ];
@@ -1838,7 +1838,7 @@ mod tests {
         assert_eq!(
             [
                 dunce::canonicalize(&command_git).expect("canonical command .git"),
-                dunce::canonicalize(&extra_codex).expect("canonical extra .codex"),
+                dunce::canonicalize(&extra_codex).expect("canonical extra .gienx"),
                 explicit_deny,
             ]
             .into_iter()

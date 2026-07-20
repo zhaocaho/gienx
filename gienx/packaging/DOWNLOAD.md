@@ -26,7 +26,7 @@ curl --proto '=https' --tlsv1.2 -sSf \
 powershell -c "irm https://github.com/zhaocaho/gienx/releases/download/v0.142.4-beta.2/codex-cli-installer.ps1 | iex"
 ```
 
-装完 `codex --version` 即可用。
+装完 `gienx --version` 即可用。
 
 ---
 
@@ -39,8 +39,8 @@ powershell -c "irm https://github.com/zhaocaho/gienx/releases/download/v0.142.4-
 gh release download v0.142.4-beta.2 --repo zhaocaho/gienx \
   --pattern 'codex-cli-aarch64-apple-darwin.tar.xz*'
 tar xf codex-cli-aarch64-apple-darwin.tar.xz
-./codex --version
-# 想全局可用: sudo mv codex /usr/local/bin/  (或放 ~/.local/bin)
+./gienx --version
+# 想全局可用: sudo mv gienx /usr/local/bin/  (或放 ~/.local/bin)
 ```
 
 ### mac Intel
@@ -48,7 +48,7 @@ tar xf codex-cli-aarch64-apple-darwin.tar.xz
 gh release download v0.142.4-beta.2 --repo zhaocaho/gienx \
   --pattern 'codex-cli-x86_64-apple-darwin.tar.xz*'
 tar xf codex-cli-x86_64-apple-darwin.tar.xz
-./codex --version
+./gienx --version
 ```
 
 ### Windows x64
@@ -56,7 +56,7 @@ tar xf codex-cli-x86_64-apple-darwin.tar.xz
 gh release download v0.142.4-beta.2 --repo zhaocaho/gienx `
   --pattern 'codex-cli-x86_64-pc-windows-msvc.zip*'
 Expand-Archive codex-cli-x86_64-pc-windows-msvc.zip -DestinationPath .
-.\codex.exe --version
+.\gienx.exe --version
 ```
 或 curl：
 ```powershell
@@ -68,8 +68,8 @@ curl -LO https://github.com/zhaocaho/gienx/releases/download/v0.142.4-beta.2/cod
 gh release download v0.142.4-beta.2 --repo zhaocaho/gienx \
   --pattern 'codex-cli-x86_64-unknown-linux-gnu.tar.xz*'
 tar xf codex-cli-x86_64-unknown-linux-gnu.tar.xz
-./codex --version
-# 全局: sudo mv codex /usr/local/bin/
+./gienx --version
+# 全局: sudo mv gienx /usr/local/bin/
 ```
 
 > 没有 `gh`？用 curl 等价命令：
@@ -78,7 +78,7 @@ tar xf codex-cli-x86_64-unknown-linux-gnu.tar.xz
 > curl -LO https://github.com/zhaocaho/gienx/releases/download/v0.142.4-beta.2/codex-cli-aarch64-apple-darwin.tar.xz.sha256
 > ```
 
-每个包内容：`codex`(Windows 为 `codex.exe`) + `CHANGELOG.md` + `LICENSE` + `README.md`。
+每个包内容：`gienx`(Windows 为 `gienx.exe`) + `CHANGELOG.md` + `LICENSE` + `README.md`。
 
 ---
 
@@ -107,18 +107,18 @@ shasum -a 256 -c sha256.sum
 - 该属性是**你 Mac 上的浏览器**在下载时加的，与 GitHub Actions 无关。
 - 如果手头已有浏览器下载的带隔离文件，去掉即可：
   ```bash
-  xattr -dr com.apple.quarantine codex        # 去隔离
-  xattr codex                                  # 查看剩余属性
+  xattr -dr com.apple.quarantine gienx        # 去隔离
+  xattr gienx                                  # 查看剩余属性
   ```
 
 ## Electron / 内嵌使用
 
-把 codex 打进**签名+公证**的 Electron `.app`（放 `Resources/` 里），子二进制继承 app 信任，`child_process.spawn` 直接调用，**无隔离、无弹窗、无需用户"打开"**：
+把 gienx 打进**签名+公证**的 Electron `.app`（放 `Resources/` 里），子二进制继承 app 信任，`child_process.spawn` 直接调用，**无隔离、无弹窗、无需用户"打开"**：
 
 ```js
 const { spawn } = require('node:child_process');
-const codexPath = require('path').join(process.resourcesPath, 'codex');
-const child = spawn(codexPath, ['exec', '--...'], { stdio: ['pipe','pipe','pipe'] });
+const gienxPath = require('path').join(process.resourcesPath, 'gienx');
+const child = spawn(gienxPath, ['exec', '--...'], { stdio: ['pipe','pipe','pipe'] });
 child.stdout.on('data', d => { /* 处理输出 */ });
 ```
 
