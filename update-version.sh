@@ -66,6 +66,7 @@ suggest_next_versions() {
     fi
 
     echo "  5) 自定义版本"
+    echo "  6) 保持当前版本（仅重新打包发布）"
     echo "  0) 取消"
     echo ""
 }
@@ -132,7 +133,7 @@ main() {
         suggest_next_versions "$latest_version"
 
         # 询问用户选择
-        read -p "请选择版本 (0-5): " choice
+        read -p "请选择版本 (0-6): " choice
 
         case $choice in
             1)
@@ -157,6 +158,10 @@ main() {
                 ;;
             5)
                 read -p "请输入自定义版本号: " new_version
+                ;;
+            6)
+                new_version="$latest_version"
+                info "保持当前版本: $new_version"
                 ;;
             0|*)
                 info "已取消"
