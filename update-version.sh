@@ -29,7 +29,9 @@ get_current_branch() {
 # 获取最新的 gienx 版本
 get_latest_gienx_version() {
     # 获取所有包含 gienx 的标签，按版本号排序，取最新的
-    git tag -l "*gienx*" | sort -V | tail -n 1
+    local tag=$(git tag -l "*gienx*" | sort -V | tail -n 1)
+    # 移除 'v' 前缀
+    echo "${tag#v}"
 }
 
 # 解析 semver 版本号
