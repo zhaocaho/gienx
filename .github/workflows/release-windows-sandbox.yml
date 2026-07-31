@@ -21,8 +21,8 @@ on:
 jobs:
   build-and-upload:
     runs-on: windows-latest
-    # build 几分钟 + 等 cargo-dist 建 Release 最长约 2h，给 3h 上限防卡死
-    timeout-minutes: 180
+    # build 几分钟 + 等 cargo-dist 建 Release 最长约 4h，给 5h 上限防卡死
+    timeout-minutes: 300
     permissions:
       contents: write
     defaults:
@@ -63,18 +63,18 @@ jobs:
         run: |
           tag="${GITHUB_REF#refs/tags/}"
           echo "Waiting for release '$tag' to be created by cargo-dist..."
-          # cargo-dist 全平台 build + gh release create 约 1.5h，给 2h 上限。
-          for i in $(seq 1 240); do
+          # cargo-dist 全平台 build + gh release create 约 1.5h，给 4h 上限。
+          for i in $(seq 1 480); do
             if gh release view "$tag" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
               echo "Release found after ~$((i*30))s."
               break
             fi
-            echo "  not yet (attempt $i/240)..."
+            echo "  not yet (attempt $i/480)..."
             sleep 30
           done
 
           if ! gh release view "$tag" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            echo "::error::Release '$tag' not found after 2h; aborting upload."
+            echo "::error::Release '$tag' not found after 4h; aborting upload."
             exit 1
           fi
 

@@ -197,13 +197,28 @@ main() {
         warn "没有需要提交的更改"
     }
 
-    # 删除旧标签（如果存在）
+    # 删除旧的 Release 和标签（如果存在）
+    # 覆盖发版必须先删 GitHub Release：否则 cargo-dist 的
+    # `gh release create` 会因 Release 已存在而失败，导致 gienx 资产
+    # 不更新（沙箱 workflow 却会把新 zip 传到旧 Release 上，新旧混存）。
     local tag_name="v$new_version"
-    if git tag -l | grep -q "^$tag_name$"; then
-        warn "标签 $tag_name 已存在，将删除并重新创建"
-        git tag -d "$tag_name"
-        git push origin ":refs/tags/$tag_name" 2>/dev/null || true
+    local repo_slug
+    repo_slug=$(git remote get-url origin | sed 's/.*github.com[:/]\(.*\)\.git/\1/')
+    if [[ -n "$repo_slug" ]] && command -v gh >/dev/null 2>&1; then
+        if gh release view "$tag_name" -R "$repo_slug" >/dev/null 2>&1; then
+            warn "GitHub Release $tag_name 已存在，删除后重建（--cleanup-tag 一并删远程 tag）"
+            gh release delete "$tag_name" -R "$repo_slug" --yes --cleanup-tag 2>/dev/null || true
+        fi
+    elif [[ -n "$repo_slug" ]]; then
+        warn "未安装 gh CLI，无法自动删除 GitHub Release。"
+        warn "若 $tag_name 的 Release 已存在，请先手动删除，否则 cargo-dist 会失败。"
     fi
+    # 本地 tag 删除；远程 tag 兜底删（--cleanup-tag 没覆盖到的情况）
+    if git tag -l | grep -q "^$tag_name$"; then
+        warn "本地标签 $tag_name 已存在，删除重建"
+        git tag -d "$tag_name"
+    fi
+    git push origin ":refs/tags/$tag_name" 2>/dev/null || true
 
     # 创建新标签
     echo ""
@@ -223,7 +238,8 @@ main() {
         success "版本 $new_version 已成功发布！"
         echo ""
         info "查看发布状态:"
-        echo "  gh run list --workflow=release.yml --limit 3"
+        echo "  gh run list --workflow=release.yml --limit 3            # cargo-dist 打 gienx 主包"
+        echo "  gh run list --workflow=release-windows-sandbox --limit 3 # 打 Windows 沙箱辅助二进制"
         echo "  或访问: https://github.com/$(git remote get-url origin | sed 's/.*github.com[:/]\(.*\)\.git/\1/')/actions"
     else
         echo ""
