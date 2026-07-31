@@ -61,6 +61,7 @@ members = [
     "file-search",
     "file-watcher",
     "linux-sandbox",
+    "windows-sandbox-rs",
     "lmstudio",
     "login",
     "codex-mcp",

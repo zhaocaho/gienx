@@ -1,0 +1,79 @@
+# 为 Windows release 额外打包两个沙箱辅助二进制：
+#   codex-windows-sandbox-setup.exe  (一次性安装器，需管理员权限)
+#   codex-command-runner.exe         (沙箱内命令执行器)
+#
+# 这两个二进制是 Windows 专用（cfg(windows)），cargo-dist 会在 mac/linux 上
+# 编出 panic 的废包，所以不能用 cargo-dist 打包。改为独立 workflow，只在
+# Windows runner 上编，再把 zip 追加到 cargo-dist 建好的 Release 里。
+#
+# 触发与 release.yml 相同的 tag 模式；两者并行跑，本 workflow 轮询等待
+# Release 被创建后再 gh release upload --clobber 追加资产。
+#
+# 产物命名与上游 openai/codex 对齐，便于复用下载逻辑。
+
+name: release-windows-sandbox
+
+on:
+  push:
+    tags:
+      - '**[0-9]+.[0-9]+.[0-9]+*'
+
+jobs:
+  build-and-upload:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    defaults:
+      run:
+        working-directory: codex-rs
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - uses: dtolnay/rust-toolchain@1.95.0
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: Cargo build (sandbox helpers)
+        shell: bash
+        run: |
+          cargo build --target x86_64-pc-windows-msvc --release \
+            --bin codex-windows-sandbox-setup \
+            --bin codex-command-runner
+
+      - name: Stage & zip
+        shell: bash
+        run: |
+          rel="target/x86_64-pc-windows-msvc/release"
+          mkdir -p dist
+          7z a "dist/codex-windows-sandbox-setup-x86_64-pc-windows-msvc.exe.zip" \
+            "$rel/codex-windows-sandbox-setup.exe"
+          7z a "dist/codex-command-runner-x86_64-pc-windows-msvc.exe.zip" \
+            "$rel/codex-command-runner.exe"
+          ls -lh dist/
+
+      - name: Wait for cargo-dist Release & upload
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag="${GITHUB_REF#refs/tags/}"
+          echo "Waiting for release '$tag' to be created by cargo-dist..."
+          for i in $(seq 1 60); do
+            if gh release view "$tag" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+              echo "Release found after ~$((i*30))s."
+              break
+            fi
+            echo "  not yet (attempt $i/60)..."
+            sleep 30
+          done
+
+          if ! gh release view "$tag" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "::error::Release '$tag' not found after 30min; aborting upload."
+            exit 1
+          fi
+
+          gh release upload "$tag" dist/*.zip --clobber -R "$GITHUB_REPOSITORY"
+          echo "Uploaded sandbox helpers to release '$tag'."

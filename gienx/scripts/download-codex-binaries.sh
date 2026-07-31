@@ -130,5 +130,36 @@ for entry in "${PLATFORMS[@]}"; do
   echo
 done
 
-echo "完成。4 个二进制已放在: $OUT_DIR/"
+# ---- Windows 沙箱辅助二进制(可选) ----
+# codex-windows-sandbox-setup.exe / codex-command-runner.exe 是 Windows 沙箱
+# 专用辅助二进制，由独立的 release-windows-sandbox.yml workflow 打包。
+# 它们必须与 gienx.exe 放在同一目录，运行时 codex 才能按"同级目录"找到。
+# 老版本 release 可能没有这俩包，下载失败时仅告警，不中断脚本。
+EXTRA_WINDOWS=(
+  "codex-windows-sandbox-setup-x86_64-pc-windows-msvc.exe.zip|codex-windows-sandbox-setup.exe"
+  "codex-command-runner-x86_64-pc-windows-msvc.exe.zip|codex-command-runner.exe"
+)
+WIN_DIR="$OUT_DIR/windows-x86_64"
+for entry in "${EXTRA_WINDOWS[@]}"; do
+  archive="${entry%%|*}"; bin_name="${entry#*|}"
+  url="https://github.com/${REPO}/releases/download/${VERSION}/${archive}"
+  echo "[extra] windows-x86_64/$bin_name  ←  $archive"
+  if ! curl -fL --retry 2 --connect-timeout 30 -o "$WORK/$archive" "$url" 2>/dev/null; then
+    echo "  ⚠ 未找到 $archive（该版本可能未打包沙箱辅助二进制，跳过）。"
+    continue
+  fi
+  ex="$WORK/ex-extra"; rm -rf "$ex"; mkdir -p "$ex"
+  extract_dir "$WORK/$archive" "$ex"
+  found="$(find "$ex" -type f -name "$bin_name" | head -1 || true)"
+  if [ -z "$found" ]; then
+    echo "  ⚠ 解压后未找到 $bin_name，跳过。"
+    continue
+  fi
+  mkdir -p "$WIN_DIR"
+  cp "$found" "$WIN_DIR/$bin_name"
+  echo "  ✓ $WIN_DIR/$bin_name  ($(du -h "$WIN_DIR/$bin_name" | cut -f1))"
+done
+echo
+
+echo "完成。二进制已放在: $OUT_DIR/"
 ls -lhR "$OUT_DIR"
