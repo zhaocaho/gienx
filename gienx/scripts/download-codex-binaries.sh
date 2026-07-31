@@ -105,8 +105,8 @@ for entry in "${PLATFORMS[@]}"; do
   url="https://github.com/${REPO}/releases/download/${VERSION}/${archive}"
 
   echo "[$i/4] $plat_dir/$bin_name  ←  $archive"
-  # 下载
-  curl -fL --retry 3 --connect-timeout 30 -o "$WORK/$archive" "$url"
+  # 下载（--retry-all-errors: SSL_ERROR_SYSCALL 等连接级错误也重试）
+  curl -fL --retry 5 --retry-all-errors --retry-delay 2 --connect-timeout 30 -o "$WORK/$archive" "$url"
 
   # 解压到子目录
   ex="$WORK/ex.$i"; mkdir -p "$ex"
@@ -144,7 +144,7 @@ for entry in "${EXTRA_WINDOWS[@]}"; do
   archive="${entry%%|*}"; bin_name="${entry#*|}"
   url="https://github.com/${REPO}/releases/download/${VERSION}/${archive}"
   echo "[extra] windows-x86_64/$bin_name  ←  $archive"
-  if ! curl -fL --retry 2 --connect-timeout 30 -o "$WORK/$archive" "$url" 2>/dev/null; then
+  if ! curl -fL --retry 5 --retry-all-errors --retry-delay 2 --connect-timeout 30 -o "$WORK/$archive" "$url" 2>/dev/null; then
     echo "  ⚠ 未找到 $archive（该版本可能未打包沙箱辅助二进制，跳过）。"
     continue
   fi
