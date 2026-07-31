@@ -131,13 +131,13 @@ for entry in "${PLATFORMS[@]}"; do
 done
 
 # ---- Windows 沙箱辅助二进制(可选) ----
-# codex-windows-sandbox-setup.exe / codex-command-runner.exe 是 Windows 沙箱
+# gienx-windows-sandbox-setup.exe / gienx-command-runner.exe 是 Windows 沙箱
 # 专用辅助二进制，由独立的 release-windows-sandbox.yml workflow 打包。
 # 它们必须与 gienx.exe 放在同一目录，运行时 codex 才能按"同级目录"找到。
 # 老版本 release 可能没有这俩包，下载失败时仅告警，不中断脚本。
 EXTRA_WINDOWS=(
-  "codex-windows-sandbox-setup-x86_64-pc-windows-msvc.exe.zip|codex-windows-sandbox-setup.exe"
-  "codex-command-runner-x86_64-pc-windows-msvc.exe.zip|codex-command-runner.exe"
+  "gienx-windows-sandbox-setup-x86_64-pc-windows-msvc.exe.zip|gienx-windows-sandbox-setup.exe"
+  "gienx-command-runner-x86_64-pc-windows-msvc.exe.zip|gienx-command-runner.exe"
 )
 WIN_DIR="$OUT_DIR/windows-x86_64"
 for entry in "${EXTRA_WINDOWS[@]}"; do

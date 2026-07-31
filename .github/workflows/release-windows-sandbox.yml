@@ -1,6 +1,6 @@
 # 为 Windows release 额外打包两个沙箱辅助二进制：
-#   codex-windows-sandbox-setup.exe  (一次性安装器，需管理员权限)
-#   codex-command-runner.exe         (沙箱内命令执行器)
+#   gienx-windows-sandbox-setup.exe  (一次性安装器，需管理员权限)
+#   gienx-command-runner.exe         (沙箱内命令执行器)
 #
 # 这两个二进制是 Windows 专用（cfg(windows)），cargo-dist 会在 mac/linux 上
 # 编出 panic 的废包，所以不能用 cargo-dist 打包。改为独立 workflow，只在
@@ -42,18 +42,18 @@ jobs:
         shell: bash
         run: |
           cargo build --target x86_64-pc-windows-msvc --release \
-            --bin codex-windows-sandbox-setup \
-            --bin codex-command-runner
+            --bin gienx-windows-sandbox-setup \
+            --bin gienx-command-runner
 
       - name: Stage & zip
         shell: bash
         run: |
           rel="target/x86_64-pc-windows-msvc/release"
           mkdir -p dist
-          7z a "dist/codex-windows-sandbox-setup-x86_64-pc-windows-msvc.exe.zip" \
-            "$rel/codex-windows-sandbox-setup.exe"
-          7z a "dist/codex-command-runner-x86_64-pc-windows-msvc.exe.zip" \
-            "$rel/codex-command-runner.exe"
+          7z a "dist/gienx-windows-sandbox-setup-x86_64-pc-windows-msvc.exe.zip" \
+            "$rel/gienx-windows-sandbox-setup.exe"
+          7z a "dist/gienx-command-runner-x86_64-pc-windows-msvc.exe.zip" \
+            "$rel/gienx-command-runner.exe"
           ls -lh dist/
 
       - name: Wait for cargo-dist Release & upload

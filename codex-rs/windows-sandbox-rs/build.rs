@@ -1,7 +1,9 @@
 use std::env;
 use std::path::PathBuf;
 
-const SETUP_BIN: &str = "codex-windows-sandbox-setup";
+const SETUP_BIN: &str = "gienx-windows-sandbox-setup";
+// manifest 文件名保持 codex-* 不改：它是编译期嵌入的 UAC 配置（非对外产物），
+// 且上游 BUILD.bazel 引用了此文件名，改名会制造不必要的合并冲突。
 const SETUP_MANIFEST: &str = "codex-windows-sandbox-setup.manifest";
 
 fn main() -> Result<(), String> {

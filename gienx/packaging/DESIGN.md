@@ -31,7 +31,7 @@
 1. **cargo 工作区根是 `codex-rs/`，git 仓库根是上一层 `codex/`**。GitHub Actions workflow 文件必须放在仓库根的 `.github/workflows/`，而 cargo-dist 的配置 `[workspace.metadata.dist]` 必须在 `codex-rs/Cargo.toml`。两者不重合，是本方案最大的实施约束（见 §6）。
 2. `codex-rs` 是多二进制工作区，且含**平台专属二进制**：
    - Linux 专属：`codex-linux-sandbox`、`bwrap`（`cfg(target_os = "linux")`）
-   - Windows 专属：`codex-windows-sandbox-setup`、`codex-command-runner`（`cfg(windows)`）
+   - Windows 专属：`gienx-windows-sandbox-setup`、`gienx-command-runner`（`cfg(windows)`）
    - 开发/测试用，**不应进发行包**：`md-events`、`codex-write-config-schema`、`codex-app-server-test-notify-capture`、`codex-execpolicy-legacy`
 3. 工具链固定 `1.95.0`（`rust-toolchain.toml`）。
 4. `.cargo/config` 已对 Windows MSVC/GNU 做了链接参数配置，不能被覆盖。
@@ -67,7 +67,7 @@
 
 ### 3.3 平台专属二进制（仅对应平台编入）
 - Linux：`codex-linux-sandbox`、`bwrap`
-- Windows：`codex-windows-sandbox-setup`、`codex-command-runner`
+- Windows：`gienx-windows-sandbox-setup`、`gienx-command-runner`
 
 ### 3.4 排除项（不进发行包）
 `md-events`、`codex-write-config-schema`、`codex-app-server-test-notify-capture`、`codex-execpolicy-legacy`、`codex-tui`（若 TUI 已并入 `gienx` 主二进制则单独排除）、`codex-code-mode-host`（按需评估）、`codex-stdio-to-uds`、`codex-file-search`、`codex-execve-wrapper`（按运行时是否需要评估）。
@@ -202,7 +202,7 @@ install.sh / install.ps1 (cargo-dist 生成)
 - **§6 子目录问题已解决**：在**仓库根**放 `dist-workspace.toml`，`[workspace] members = ["cargo:codex-rs"]` 显式指向 codex-rs cargo 工作区。`dist` 从仓库根即可找到配置并定位到 codex-rs，**无需** workflow 设 `working-directory: codex-rs`。`dist generate` 生成的 `.github/workflows/release.yml` 直接可用，`dist generate --check` 无漂移。
 - **§4 universal2 暂未启用**：v0.32 的 `universal-binaries` 键被接受但未合并出 universal archive，行为与文档不符。首版按设计允许的兜底——**macOS 双架构独立包**（arm64、x86_64 各一个 archive）。universal2 留待后续验证正确语法或升级 cargo-dist 版本后再开。
 - **§3 二进制范围**：用 `[package.metadata.dist] dist = false` 排除 23 个含二进制的 crate，**仅发 `codex-cli`（`codex`）**。每个平台产出一个含 `codex`（Windows 为 `codex.exe`）+ `CHANGELOG/LICENSE/README` 的压缩包，附 `sha256` 校验和 shell/powershell 安装脚本。
-- **运行时辅助二进制（sandbox/apply_patch 等）暂未随包发布**：这些 crate 设了 `dist=false`。`gienx` 二进制已把 TUI/CLI/exec/apply-patch 逻辑作为库链接进去；但 Linux 的 `codex-linux-sandbox`、Windows 的 `codex-windows-sandbox-setup` 是独立进程，是否需要随 `gienx` 一起分发待运行时验证（设计 §3.2 待办）。
+- **运行时辅助二进制（sandbox/apply_patch 等）暂未随包发布**：这些 crate 设了 `dist=false`。`gienx` 二进制已把 TUI/CLI/exec/apply-patch 逻辑作为库链接进去；但 Linux 的 `codex-linux-sandbox`、Windows 的 `gienx-windows-sandbox-setup` 是独立进程，是否需要随 `gienx` 一起分发待运行时验证（设计 §3.2 待办）。
 - **触发**：打版本 tag `v<version>` 即触发；workflow 也对 PR 跑轻量 `dist plan`（不跑全矩阵）。
 
 **首次试发命令**（确认仓库已推送、CI 通后）：

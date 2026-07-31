@@ -12,11 +12,11 @@ path = "src/lib.rs"
 doctest = false
 
 [[bin]]
-name = "codex-windows-sandbox-setup"
+name = "gienx-windows-sandbox-setup"
 path = "src/bin/setup_main/main.rs"
 
 [[bin]]
-name = "codex-command-runner"
+name = "gienx-command-runner"
 path = "src/bin/command_runner/main.rs"
 
 [lints]
@@ -98,6 +98,6 @@ pretty_assertions = { workspace = true }
 
 # gienx: 不走 cargo-dist（cfg(windows) 二进制在 mac/linux 上会编出 panic 废包）。
 # 改由独立的 .github/workflows/release-windows-sandbox.yml 在 Windows runner 上
-# 打包 codex-windows-sandbox-setup.exe / codex-command-runner.exe 两个二进制。
+# 打包 gienx-windows-sandbox-setup.exe / gienx-command-runner.exe 两个二进制。
 [package.metadata.dist]
 dist = false

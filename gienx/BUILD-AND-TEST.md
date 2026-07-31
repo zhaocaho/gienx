@@ -35,7 +35,7 @@ cargo build -p codex-cli --release
 
 产物路径：`codex-rs/target/debug/codex` 或 `codex-rs/target/release/codex`。
 
-> 平台专属 crate（如 `codex-linux-sandbox`、`codex-windows-sandbox-setup`）仅在对应平台编译，其他平台会自动跳过。
+> 平台专属 crate（如 `codex-linux-sandbox`、`gienx-windows-sandbox-setup`）仅在对应平台编译，其他平台会自动跳过。
 
 ## 4. 测试
 
