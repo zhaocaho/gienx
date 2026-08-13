@@ -37,6 +37,7 @@ use codex_tools::ToolName;
 use codex_tools::ToolSpec;
 use codex_utils_output_truncation::approx_token_count;
 use codex_utils_path_uri::PathConvention;
+use codex_utils_pty;
 
 use super::super::shell_spec::CommandToolOptions;
 use super::super::shell_spec::create_exec_command_tool_with_environment_id;
@@ -237,8 +238,12 @@ impl ExecCommandHandler {
         let shell_type = resolved_command.shell_type;
         let command_for_display = codex_shell_command::parse_command::shlex_join(&command);
 
+        // ConPTY requires Windows 10 1809+. On older Windows (e.g. Win7),
+        // force pipe mode even when the model requests a TTY.
+        let tty = args.tty && codex_utils_pty::conpty_supported();
+
         let ExecCommandArgs {
-            tty,
+            tty: _,
             yield_time_ms,
             max_output_tokens,
             sandbox_permissions,

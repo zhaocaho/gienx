@@ -49,6 +49,9 @@ def build_source_binaries(
         and codex_windows_sandbox_setup_bin is None,
     )
     if binaries:
+        # The Tier 3 win7 MSVC target has no prebuilt std in rustup, so the
+        # standard library must be built from source for that target.
+        build_std = spec.target.endswith("-win7-windows-msvc")
         cmd = [
             cargo,
             "build",
@@ -57,14 +60,19 @@ def build_source_binaries(
             "--profile",
             profile,
         ]
+        if build_std:
+            cmd.extend(["-Z", "build-std"])
         for binary in binaries:
             cmd.extend(["--bin", binary])
 
         cargo_env = None
+        if build_std:
+            cargo_env = {**os.environ, "RUSTC_BOOTSTRAP": "1"}
         if entrypoint_bin is None:
             codex_v8_env = resolve_codex_v8_cargo_env(spec)
             if codex_v8_env:
-                cargo_env = {**os.environ, **codex_v8_env}
+                base_env = cargo_env if cargo_env is not None else os.environ
+                cargo_env = {**base_env, **codex_v8_env}
 
         print("+", " ".join(cmd))
         subprocess.run(

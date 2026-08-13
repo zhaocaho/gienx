@@ -1066,6 +1066,7 @@ impl Session {
                         session_configuration.parent_thread_id,
                     ),
                 ),
+                #[cfg(feature = "code-mode-runtime")]
                 code_mode_service: crate::tools::code_mode::CodeModeService::new(),
                 tool_search_handler_cache: Default::default(),
                 turn_environments: Arc::clone(&turn_environments),

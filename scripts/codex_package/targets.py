@@ -103,6 +103,12 @@ TARGET_SPECS: dict[str, TargetSpec] = {
         is_linux=False,
         dotslash_platform="windows-x86_64",
     ),
+    "x86_64-win7-windows-msvc": TargetSpec(
+        target="x86_64-win7-windows-msvc",
+        is_windows=True,
+        is_linux=False,
+        dotslash_platform="windows-x86_64",
+    ),
     "aarch64-pc-windows-msvc": TargetSpec(
         target="aarch64-pc-windows-msvc",
         is_windows=True,

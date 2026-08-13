@@ -1,2 +1,11 @@
 codex-rs/app-server-protocol/schema/** linguist-generated
 codex-rs/hooks/schema/generated/** linguist-generated
+
+# Migration SQL files must use CRLF line endings so that their SHA-384
+# checksums match the values recorded in existing state databases.
+# Changing the line ending would invalidate the checksum and prevent
+# the binary from starting.
+codex-rs/state/migrations/*.sql text eol=crlf
+codex-rs/state/logs_migrations/*.sql text eol=crlf
+codex-rs/state/memory_migrations/*.sql text eol=crlf
+codex-rs/state/goals_migrations/*.sql text eol=crlf

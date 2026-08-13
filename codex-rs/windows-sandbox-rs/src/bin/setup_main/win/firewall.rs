@@ -275,23 +275,38 @@ fn ensure_block_rule(
     log: &mut dyn Write,
 ) -> Result<()> {
     let name = BSTR::from(spec.internal_name);
+
+    // `INetFwRule3` is available on Windows 8+. Windows 7 only implements
+    // `INetFwRule2`, which lacks `LocalUserAuthorizedList`; without that field
+    // the block rule would apply machine-wide instead of only to the sandbox
+    // user. Keep the rule out of the firewall and rely on the WFP filters,
+    // which are Win7-compatible and enforce the same per-user isolation.
     let rule: INetFwRule3 = match unsafe { rules.Item(&name) } {
-        Ok(existing) => existing.cast().map_err(|err| {
-            anyhow::Error::new(SetupFailure::new(
-                SetupErrorCode::HelperFirewallRuleCreateOrAddFailed,
-                format!("cast existing firewall rule to INetFwRule3 failed: {err:?}"),
-            ))
-        })?,
+        Ok(existing) => match existing.cast() {
+            Ok(r) => r,
+            Err(_) => {
+                log_rule_skipped_on_win7(log, spec)?;
+                return Ok(());
+            }
+        },
         Err(_) => {
-            let new_rule: INetFwRule3 =
-                unsafe { CoCreateInstance(&NetFwRule, None, CLSCTX_INPROC_SERVER) }.map_err(
-                    |err| {
-                        anyhow::Error::new(SetupFailure::new(
-                            SetupErrorCode::HelperFirewallRuleCreateOrAddFailed,
-                            format!("CoCreateInstance NetFwRule failed: {err:?}"),
-                        ))
-                    },
-                )?;
+            let co_create_result: windows::core::Result<INetFwRule3> =
+                unsafe { CoCreateInstance(&NetFwRule, None, CLSCTX_INPROC_SERVER) };
+            let new_rule: INetFwRule3 = match co_create_result {
+                Ok(rule) => match rule.cast() {
+                    Ok(r) => r,
+                    Err(_) => {
+                        log_rule_skipped_on_win7(log, spec)?;
+                        return Ok(());
+                    }
+                },
+                Err(err) => {
+                    return Err(anyhow::Error::new(SetupFailure::new(
+                        SetupErrorCode::HelperFirewallRuleCreateOrAddFailed,
+                        format!("CoCreateInstance NetFwRule failed: {err:?}"),
+                    )));
+                }
+            };
             unsafe { new_rule.SetName(&name) }.map_err(|err| {
                 anyhow::Error::new(SetupFailure::new(
                     SetupErrorCode::HelperFirewallRuleCreateOrAddFailed,
@@ -464,6 +479,16 @@ fn log_line(log: &mut dyn Write, msg: &str) -> Result<()> {
     let ts = chrono::Utc::now().to_rfc3339();
     writeln!(log, "[{ts}] {msg}")?;
     Ok(())
+}
+
+fn log_rule_skipped_on_win7(log: &mut dyn Write, spec: &BlockRuleSpec<'_>) -> Result<()> {
+    log_line(
+        log,
+        &format!(
+            "firewall rule skipped (user-scoped rules need INetFwRule3, unavailable on this Windows version) name={}",
+            spec.internal_name
+        ),
+    )
 }
 
 #[cfg(test)]

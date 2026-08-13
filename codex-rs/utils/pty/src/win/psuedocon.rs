@@ -1,4 +1,3 @@
-#![allow(clippy::expect_used)]
 #![allow(clippy::upper_case_acronyms)]
 
 // This file is copied from https://github.com/wezterm/wezterm (MIT license).
@@ -26,7 +25,7 @@ use anyhow::bail;
 use anyhow::ensure;
 use filedescriptor::FileDescriptor;
 use filedescriptor::OwnedHandle;
-use lazy_static::lazy_static;
+use std::sync::OnceLock;
 use portable_pty::cmdbuilder::CommandBuilder;
 use shared_library::shared_library;
 use std::env;
@@ -84,20 +83,21 @@ shared_library!(Ntdll,
     ) -> NTSTATUS,
 );
 
-fn load_conpty() -> ConPtyFuncs {
-    let kernel = ConPtyFuncs::open(Path::new("kernel32.dll")).expect(
-        "this system does not support conpty.  Windows 10 October 2018 or newer is required",
-    );
+fn load_conpty() -> Option<ConPtyFuncs> {
+    // Try kernel32.dll first (where ConPTY lives on supported systems).
+    let kernel = ConPtyFuncs::open(Path::new("kernel32.dll")).ok()?;
 
+    // Prefer a sideloaded conpty.dll if present.
     if let Ok(sideloaded) = ConPtyFuncs::open(Path::new("conpty.dll")) {
-        sideloaded
-    } else {
-        kernel
+        return Some(sideloaded);
     }
+    Some(kernel)
 }
 
-lazy_static! {
-    static ref CONPTY: ConPtyFuncs = load_conpty();
+static CONPTY: OnceLock<Option<ConPtyFuncs>> = OnceLock::new();
+
+fn get_conpty() -> Option<&'static ConPtyFuncs> {
+    CONPTY.get_or_init(load_conpty).as_ref()
 }
 
 pub fn conpty_supported() -> bool {
@@ -129,7 +129,9 @@ unsafe impl Sync for PsuedoCon {}
 
 impl Drop for PsuedoCon {
     fn drop(&mut self) {
-        unsafe { (CONPTY.ClosePseudoConsole)(self.con) };
+        if let Some(conpty) = get_conpty() {
+            unsafe { (conpty.ClosePseudoConsole)(self.con) };
+        }
     }
 }
 
@@ -139,9 +141,11 @@ impl PsuedoCon {
     }
 
     pub fn new(size: COORD, input: FileDescriptor, output: FileDescriptor) -> Result<Self, Error> {
+        let conpty = get_conpty()
+            .ok_or_else(|| anyhow::anyhow!("ConPTY is not available on this Windows version"))?;
         let mut con: HPCON = INVALID_HANDLE_VALUE;
         let result = unsafe {
-            (CONPTY.CreatePseudoConsole)(
+            (conpty.CreatePseudoConsole)(
                 size,
                 input.as_raw_handle() as _,
                 output.as_raw_handle() as _,
@@ -161,7 +165,9 @@ impl PsuedoCon {
     }
 
     pub fn resize(&self, size: COORD) -> Result<(), Error> {
-        let result = unsafe { (CONPTY.ResizePseudoConsole)(self.con, size) };
+        let conpty = get_conpty()
+            .ok_or_else(|| anyhow::anyhow!("ConPTY is not available on this Windows version"))?;
+        let result = unsafe { (conpty.ResizePseudoConsole)(self.con, size) };
         ensure!(
             result == S_OK,
             "failed to resize console to {}x{}: HRESULT: {}",

@@ -4295,7 +4295,6 @@ version = "0.0.1-gienx.1"
 dependencies = [
  "anyhow",
  "filedescriptor",
- "lazy_static",
  "libc",
  "log",
  "portable-pty",

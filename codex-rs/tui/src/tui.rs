@@ -374,11 +374,14 @@ pub(crate) fn flush_terminal_input_buffer() {}
 
 /// Initialize the terminal (inline viewport; history stays in normal scrollback)
 pub(crate) fn init() -> Result<InitializedTerminal> {
+    // On Windows 7, is_terminal() may return false even in cmd.exe due to
+    // differences in GetConsoleMode behavior. Be lenient and let crossterm
+    // handle any real terminal issues during initialization.
     if !stdin().is_terminal() {
-        return Err(std::io::Error::other("stdin is not a terminal"));
+        tracing::warn!("stdin is not a terminal, attempting to continue anyway");
     }
     if !stdout().is_terminal() {
-        return Err(std::io::Error::other("stdout is not a terminal"));
+        tracing::warn!("stdout is not a terminal, attempting to continue anyway");
     }
     set_modes()?;
 

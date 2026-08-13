@@ -16,12 +16,17 @@ use codex_utils_pty::PsuedoCon;
 use codex_utils_pty::RawConPty;
 use std::collections::HashMap;
 use std::ffi::c_void;
+use std::ffi::CString;
 use std::os::windows::io::IntoRawHandle;
 use std::path::Path;
+use std::sync::OnceLock;
 use windows_sys::Win32::Foundation::CloseHandle;
 use windows_sys::Win32::Foundation::GetLastError;
 use windows_sys::Win32::Foundation::HANDLE;
 use windows_sys::Win32::Foundation::INVALID_HANDLE_VALUE;
+use windows_sys::Win32::System::Console::COORD;
+use windows_sys::Win32::System::LibraryLoader::GetModuleHandleW;
+use windows_sys::Win32::System::LibraryLoader::GetProcAddress;
 use windows_sys::Win32::System::Threading::CREATE_UNICODE_ENVIRONMENT;
 use windows_sys::Win32::System::Threading::CreateProcessAsUserW;
 use windows_sys::Win32::System::Threading::EXTENDED_STARTUPINFO_PRESENT;
@@ -75,6 +80,10 @@ impl ConptyInstance {
 /// primitive, although the common entry point is `spawn_conpty_process_as_user`.
 #[allow(dead_code)]
 pub fn create_conpty(cols: i16, rows: i16) -> Result<ConptyInstance> {
+    anyhow::ensure!(
+        codex_utils_pty::conpty_supported(),
+        "ConPTY is not available on this Windows version"
+    );
     let raw = RawConPty::new(cols, rows)?;
     let (pseudoconsole, input_write, output_read) = raw.into_handles();
 
@@ -98,6 +107,10 @@ pub fn spawn_conpty_process_as_user(
     use_private_desktop: bool,
     logs_base_dir: Option<&Path>,
 ) -> Result<(PROCESS_INFORMATION, ConptyInstance)> {
+    anyhow::ensure!(
+        codex_utils_pty::conpty_supported(),
+        "ConPTY is not available on this Windows version"
+    );
     let cmdline_str = argv
         .iter()
         .map(|arg| quote_windows_arg(arg))
@@ -155,4 +168,52 @@ pub fn spawn_conpty_process_as_user(
         ));
     }
     Ok((pi, conpty))
+}
+
+// ── ResizePseudoConsole dynamic loading ──────────────────────────────────
+//
+// `ResizePseudoConsole` is exported by kernel32.dll only on Windows 10 1809+.
+// A static `#[link(name = "kernel32")]` import would write the symbol into the
+// PE import table and cause the Windows loader to refuse the binary entirely on
+// Windows 7 ("The procedure entry point could not be found").
+//
+// We resolve the function via `GetProcAddress` at runtime. On systems where
+// ConPTY is unavailable the lookup returns `None`, and the resize becomes a
+// quiet no‑op (the caller is expected to have already avoided the TTY path via
+// `conpty_supported()`).
+
+type FnResizePseudoConsole =
+    unsafe extern "system" fn(HANDLE, COORD) -> i32;
+
+static RESIZE_PSEUDO_CONSOLE_FN: OnceLock<Option<FnResizePseudoConsole>> = OnceLock::new();
+
+/// Dynamically resolve and call `ResizePseudoConsole`.
+///
+/// Returns `S_OK` (0) when ConPTY is not available, so callers that already
+/// guard with `conpty_supported()` or use a pipe fallback can call this
+/// unconditionally.
+pub fn try_resize_pseudoconsole(hpc: HANDLE, size: COORD) -> i32 {
+    let func = RESIZE_PSEUDO_CONSOLE_FN.get_or_init(|| unsafe {
+        let kernel32 = to_wide("kernel32.dll");
+        let h_module = GetModuleHandleW(kernel32.as_ptr());
+        if h_module == 0 {
+            return None;
+        }
+        let proc_name = match CString::new("ResizePseudoConsole") {
+            Ok(n) => n,
+            Err(_) => return None,
+        };
+        let farproc = GetProcAddress(h_module, proc_name.as_ptr() as *const u8);
+        farproc.map(|p| {
+            std::mem::transmute::<
+                unsafe extern "system" fn() -> isize,
+                FnResizePseudoConsole,
+            >(p)
+        })
+    });
+
+    match func {
+        Some(f) => unsafe { f(hpc, size) },
+        None => 0, // S_OK — ConPTY not present, resize is a no-op
+    }
 }

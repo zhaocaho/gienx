@@ -60,7 +60,6 @@ use windows_sys::Win32::Storage::FileSystem::FILE_GENERIC_READ;
 use windows_sys::Win32::Storage::FileSystem::FILE_GENERIC_WRITE;
 use windows_sys::Win32::Storage::FileSystem::OPEN_EXISTING;
 use windows_sys::Win32::System::Console::COORD;
-use windows_sys::Win32::System::Console::ResizePseudoConsole;
 use windows_sys::Win32::System::JobObjects::AssignProcessToJobObject;
 use windows_sys::Win32::System::JobObjects::CreateJobObjectW;
 use windows_sys::Win32::System::JobObjects::JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
@@ -283,7 +282,11 @@ fn spawn_ipc_process(req: &SpawnRequest) -> Result<IpcSpawnedProcess> {
     let mut conpty_owner = None;
     let mut hpc_handle: Option<HANDLE> = None;
     let mut pipe_handles = None;
-    let (pi, stdout_handle, stderr_handle, stdin_handle) = if req.tty {
+    // Defense in depth: even though the parent should have already set
+    // tty=false on pre-Win10 systems, force pipe mode here so the runner
+    // itself never panics when ConPTY is missing.
+    let tty = req.tty && codex_utils_pty::conpty_supported();
+    let (pi, stdout_handle, stderr_handle, stdin_handle) = if tty {
         let (pi, mut conpty) = codex_windows_sandbox::spawn_conpty_process_as_user(
             h_token.raw(),
             &req.command,
@@ -461,15 +464,13 @@ fn spawn_input_loop(
                     if let Ok(guard) = hpc_handle.lock()
                         && let Some(hpc) = guard.as_ref()
                     {
-                        unsafe {
-                            let _ = ResizePseudoConsole(
-                                *hpc,
-                                COORD {
-                                    X: cols as i16,
-                                    Y: rows as i16,
-                                },
-                            );
-                        }
+                        let _ = codex_windows_sandbox::try_resize_pseudoconsole(
+                            *hpc,
+                            COORD {
+                                X: cols as i16,
+                                Y: rows as i16,
+                            },
+                        );
                     }
                 }
                 Message::Terminate { .. } => {
