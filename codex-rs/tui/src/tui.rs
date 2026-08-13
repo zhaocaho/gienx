@@ -175,7 +175,11 @@ mod tests {
 pub fn set_modes() -> Result<()> {
     ensure_virtual_terminal_processing()?;
 
-    execute!(stdout(), EnableBracketedPaste)?;
+    // Bracketed paste is not available on legacy Windows consoles (Win7).
+    // Attempt to enable it, but continue gracefully if unsupported.
+    if let Err(err) = execute!(stdout(), EnableBracketedPaste) {
+        tracing::warn!("bracketed paste not supported, continuing without it: {err}");
+    }
 
     enable_raw_mode()?;
     // Enable keyboard enhancement flags so modifiers for keys like Enter are disambiguated.
