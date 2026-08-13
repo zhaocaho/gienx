@@ -252,7 +252,10 @@ fn restore_common(
     raw_mode_restore: RawModeRestore,
     keyboard_restore: KeyboardRestore,
 ) -> Result<()> {
-    let mut first_error = ensure_virtual_terminal_processing().err();
+    // On Win7 legacy consoles, virtual terminal processing is not supported.
+    // Degrade gracefully instead of failing the entire restore.
+    let _ = ensure_virtual_terminal_processing();
+    let mut first_error: Option<std::io::Error> = None;
 
     match keyboard_restore {
         KeyboardRestore::PopStack => keyboard_modes::restore_keyboard_enhancement_stack(),
@@ -260,7 +263,7 @@ fn restore_common(
     }
 
     if let Err(err) = execute!(stdout(), DisableBracketedPaste) {
-        first_error.get_or_insert(err);
+        tracing::warn!("failed to disable bracketed paste on exit: {err}");
     }
     let _ = execute!(stdout(), DisableFocusChange);
     if matches!(raw_mode_restore, RawModeRestore::Disable)
@@ -838,9 +841,11 @@ impl Tui {
         if area.bottom() > size.height {
             let scroll_by = area.bottom() - size.height;
             if !terminal_height_shrank {
-                terminal
+                // Legacy Windows consoles (Win7) do not support scroll region
+                // operations. Degrade gracefully.
+                let _ = terminal
                     .backend_mut()
-                    .scroll_region_up(0..area.top(), scroll_by)?;
+                    .scroll_region_up(0..area.top(), scroll_by);
             }
             area.y = size.height - area.height;
         } else if terminal_height_grew && viewport_was_bottom_aligned {
@@ -921,9 +926,9 @@ impl Tui {
             area.width = size.width;
             // If the viewport has expanded, scroll everything else up to make room.
             if area.bottom() > size.height {
-                terminal
+                let _ = terminal
                     .backend_mut()
-                    .scroll_region_up(0..area.top(), area.bottom() - size.height)?;
+                    .scroll_region_up(0..area.top(), area.bottom() - size.height);
                 area.y = size.height - area.height;
             }
             if area != terminal.viewport_area {
@@ -1100,6 +1105,7 @@ impl Tui {
 fn ensure_virtual_terminal_processing() -> Result<()> {
     use windows_sys::Win32::Foundation::HANDLE;
     use windows_sys::Win32::Foundation::INVALID_HANDLE_VALUE;
+    use windows_sys::Win32::Foundation::GetLastError;
     use windows_sys::Win32::System::Console::ENABLE_PROCESSED_OUTPUT;
     use windows_sys::Win32::System::Console::ENABLE_VIRTUAL_TERMINAL_PROCESSING;
     use windows_sys::Win32::System::Console::GetConsoleMode;
@@ -1124,17 +1130,22 @@ fn ensure_virtual_terminal_processing() -> Result<()> {
         }
 
         if unsafe { SetConsoleMode(handle, mode | requested) } == 0 {
-            return Err(std::io::Error::last_os_error());
+            // Win7 legacy consoles do not support ENABLE_VIRTUAL_TERMINAL_PROCESSING.
+            // Degrade gracefully instead of failing.
+            tracing::warn!(
+                "SetConsoleMode failed (virtual terminal not supported on this console): {}",
+                unsafe { GetLastError() }
+            );
         }
 
         Ok(())
     }
 
     let stdout_handle = unsafe { GetStdHandle(STD_OUTPUT_HANDLE) };
-    enable_for_handle(stdout_handle)?;
+    let _ = enable_for_handle(stdout_handle);
 
     let stderr_handle = unsafe { GetStdHandle(STD_ERROR_HANDLE) };
-    enable_for_handle(stderr_handle)?;
+    let _ = enable_for_handle(stderr_handle);
 
     Ok(())
 }
