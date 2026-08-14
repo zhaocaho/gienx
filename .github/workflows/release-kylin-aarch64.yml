@@ -1,0 +1,114 @@
+# Kylin V10 SP1 (aarch64, glibc 2.31) package:
+#   bin/gienx + codex-resources/bwrap + codex-path/rg
+#
+# Not part of cargo-dist: ubuntu-22.04-arm would link glibc 2.35 and the
+# binary would not start on the target machine. Build inside debian:11
+# (glibc 2.31) on an ARM runner instead.
+#
+# Tag trigger matches release.yml. The job waits for cargo-dist to create
+# the GitHub Release, then uploads the extra archive. workflow_dispatch
+# only publishes a workflow artifact.
+
+name: release-kylin-aarch64
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "**[0-9]+.[0-9]+.[0-9]+*"
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04-arm
+    container: debian:11
+    timeout-minutes: 240
+    env:
+      DEBIAN_FRONTEND: noninteractive
+      CARGO_TERM_COLOR: always
+      RUSTUP_HOME: /usr/local/rustup
+      CARGO_HOME: /usr/local/cargo
+
+    steps:
+      - name: Install build dependencies
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            binutils \
+            build-essential \
+            ca-certificates \
+            curl \
+            file \
+            git \
+            gzip \
+            libcap-dev \
+            libssl-dev \
+            pkg-config \
+            python3 \
+            xz-utils
+
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Install Rust 1.95.0
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
+            | sh -s -- -y --default-toolchain 1.95.0 --profile minimal
+          echo "$CARGO_HOME/bin" >> "$GITHUB_PATH"
+          export PATH="$CARGO_HOME/bin:$PATH"
+          rustup target add aarch64-unknown-linux-gnu
+          rustc --version
+          ldd --version
+
+      - name: Build Kylin package
+        env:
+          OUT_DIR: ${{ github.workspace }}/dist
+        run: |
+          chmod +x gienx/scripts/build-kylin-aarch64-package.sh gienx/scripts/check-glibc-max.py
+          ./gienx/scripts/build-kylin-aarch64-package.sh
+          ls -lh dist/
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: gienx-kylin-v10-aarch64-unknown-linux-gnu
+          path: dist/gienx-kylin-v10-aarch64-unknown-linux-gnu.tar.xz*
+
+  upload:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: build
+    runs-on: ubuntu-22.04
+    timeout-minutes: 300
+    permissions:
+      contents: write
+    steps:
+      - name: Download Kylin package
+        uses: actions/download-artifact@v8
+        with:
+          name: gienx-kylin-v10-aarch64-unknown-linux-gnu
+          path: dist
+
+      - name: Wait for cargo-dist Release and upload
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag="${GITHUB_REF#refs/tags/}"
+          ls -lh dist/
+          echo "Waiting for release '$tag' to be created by cargo-dist..."
+          for i in $(seq 1 480); do
+            if gh release view "$tag" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+              echo "Release found after ~$((i * 30))s."
+              break
+            fi
+            echo "  not yet (attempt $i/480)..."
+            sleep 30
+          done
+
+          if ! gh release view "$tag" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "::error::Release '$tag' not found after 4h; aborting upload."
+            exit 1
+          fi
+
+          gh release upload "$tag" dist/gienx-kylin-v10-aarch64-unknown-linux-gnu.tar.xz* \
+            --clobber -R "$GITHUB_REPOSITORY"
+          echo "Uploaded Kylin aarch64 package to release '$tag'."

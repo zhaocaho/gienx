@@ -86,6 +86,7 @@
 | windows-x64 | `windows-latest` | `x86_64-pc-windows-msvc` | `.zip`（+可选 `.msi`） |
 | linux-gnu-x64 | `ubuntu-latest` | `x86_64-unknown-linux-gnu` | `.tar.gz` |
 | linux-musl-x64（可选） | `ubuntu-latest` | `x86_64-unknown-linux-musl` | `.tar.gz`（静态） |
+| 麒麟 V10 SP1 ARM64 | `ubuntu-22.04-arm` + `debian:11` | `aarch64-unknown-linux-gnu`（glibc 2.31） | 完整包，见 `gienx/docs/麒麟系统适配方案.md`（**不走 cargo-dist**） |
 
 **macOS universal2 策略**：开启 `universal-binaries = true`，cargo-dist 自动 `lipo` 合并 arm64 + x86_64 成单包，用户无需挑架构。如发现体积过大或签名问题，退化为双架构独立包。
 

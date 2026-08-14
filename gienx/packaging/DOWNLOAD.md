@@ -72,13 +72,35 @@ tar xf codex-cli-x86_64-unknown-linux-gnu.tar.xz
 # 全局: sudo mv gienx /usr/local/bin/
 ```
 
+### 银河麒麟桌面 V10 SP1 ARM64（飞腾/鲲鹏，glibc 2.31）
+
+**不要**用上面的 `x86_64-unknown-linux-gnu` 包，也不要用在 Ubuntu 22.04+ 上编出来的 linux-arm64 单文件。麒麟包是独立资产：
+
+```bash
+gh release download v0.142.4-beta.2 --repo zhaocaho/gienx \
+  --pattern 'gienx-kylin-v10-aarch64-unknown-linux-gnu.tar.xz*'
+mkdir kylin && tar xf gienx-kylin-v10-aarch64-unknown-linux-gnu.tar.xz -C kylin
+./kylin/bin/gienx --version
+```
+
+包内是完整布局（sandbox 依赖它）：
+
+```text
+bin/gienx
+codex-resources/bwrap
+codex-path/rg
+codex-package.json
+```
+
+Electron 必须复制**整个目录**，不要只拷一个 `gienx`。对 `~/Documents/superclient`，构建输入放到 `binaries/linux-arm64/`，打包时保持到 `resources/binaries/linux/`，主进程启动 `resources/binaries/linux/bin/gienx`。详见 `gienx/docs/麒麟系统适配方案.md`。
+
 > 没有 `gh`？用 curl 等价命令：
 > ```bash
 > curl -LO https://github.com/zhaocaho/gienx/releases/download/v0.142.4-beta.2/codex-cli-aarch64-apple-darwin.tar.xz
 > curl -LO https://github.com/zhaocaho/gienx/releases/download/v0.142.4-beta.2/codex-cli-aarch64-apple-darwin.tar.xz.sha256
 > ```
 
-每个包内容：`gienx`(Windows 为 `gienx.exe`) + `CHANGELOG.md` + `LICENSE` + `README.md`。
+常规 cargo-dist 包内容：`gienx`（Windows 为 `gienx.exe`）+ `CHANGELOG.md` + `LICENSE` + `README.md`。麒麟包例外，使用上面列出的完整 package layout。
 
 ---
 
