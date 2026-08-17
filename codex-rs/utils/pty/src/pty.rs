@@ -152,6 +152,13 @@ pub async fn spawn_process_with_inherited_fds(
     #[cfg(not(unix))]
     let _ = inherited_fds;
 
+    // On Windows, if ConPTY is not available (e.g., Windows 7), fall back to pipe mode.
+    #[cfg(windows)]
+    if !conpty_supported() {
+        log::warn!("ConPTY not supported on this Windows version, falling back to pipe mode");
+        return crate::pipe::spawn_process(program, args, cwd, env, arg0).await;
+    }
+
     #[cfg(unix)]
     if !inherited_fds.is_empty() {
         return spawn_process_preserving_fds(program, args, cwd, env, arg0, size, inherited_fds)
