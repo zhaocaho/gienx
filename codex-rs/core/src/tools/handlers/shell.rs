@@ -59,6 +59,7 @@ struct RunExecLikeArgs {
 }
 
 async fn run_exec_like(args: RunExecLikeArgs) -> Result<FunctionToolOutput, FunctionCallError> {
+    tracing::info!("[RUN-EXEC-LIKE] entered, command={:?}", args.exec_params.command);
     let RunExecLikeArgs {
         tool_name,
         exec_params,
@@ -98,6 +99,7 @@ async fn run_exec_like(args: RunExecLikeArgs) -> Result<FunctionToolOutput, Func
         additional_permissions,
     )
     .await;
+    tracing::info!("[RUN-EXEC-LIKE] apply_granted_turn_permissions done");
     let additional_permissions_allowed = exec_permission_approvals_enabled
         || (session.features().enabled(Feature::RequestPermissionsTool)
             && effective_additional_permissions.permissions_preapproved);
@@ -156,6 +158,7 @@ async fn run_exec_like(args: RunExecLikeArgs) -> Result<FunctionToolOutput, Func
     {
         return Ok(output);
     }
+    tracing::info!("[RUN-EXEC-LIKE] intercept_apply_patch done");
 
     let source = ExecCommandSource::Agent;
     let emitter = ToolEmitter::shell(exec_params.command.clone(), exec_params.cwd.clone(), source);
@@ -166,6 +169,7 @@ async fn run_exec_like(args: RunExecLikeArgs) -> Result<FunctionToolOutput, Func
         /*turn_diff_tracker*/ None,
     );
     emitter.begin(event_ctx).await;
+    tracing::info!("[RUN-EXEC-LIKE] emitter.begin done");
 
     let exec_approval_requirement = session
         .services
@@ -183,6 +187,7 @@ async fn run_exec_like(args: RunExecLikeArgs) -> Result<FunctionToolOutput, Func
             prefix_rule,
         })
         .await;
+    tracing::info!("[RUN-EXEC-LIKE] create_exec_approval_requirement done");
 
     let req = ShellRequest {
         command: exec_params.command.clone(),
@@ -221,6 +226,7 @@ async fn run_exec_like(args: RunExecLikeArgs) -> Result<FunctionToolOutput, Func
         )
         .await
         .map(|result| result.output);
+    tracing::info!("[RUN-EXEC-LIKE] orchestrator.run() returned");
     let event_ctx = ToolEventCtx::new(
         session.as_ref(),
         turn.as_ref(),

@@ -1,4 +1,4 @@
-use codex_exec_server::ShellInfo;
+﻿use codex_exec_server::ShellInfo;
 use codex_shell_command::shell_detect::DetectedShell;
 use serde::Deserialize;
 use serde::Serialize;
@@ -38,12 +38,14 @@ impl Shell {
 
                 args.push("-Command".to_string());
                 args.push(command.to_string());
+                tracing::info!("[SHELL] PowerShell args: {args:?}");
                 args
             }
             ShellType::Cmd => {
                 let mut args = vec![self.shell_path.to_string_lossy().to_string()];
                 args.push("/c".to_string());
                 args.push(command.to_string());
+                tracing::info!("[SHELL] Cmd args: {args:?}");
                 args
             }
         }

@@ -246,6 +246,7 @@ impl ToolRuntime<ShellRequest, ExecToolCallOutput> for ShellRuntime {
         attempt: &SandboxAttempt<'_>,
         ctx: &ToolCtx,
     ) -> Result<ExecToolCallOutput, ToolError> {
+        tracing::info!("[SHELL-RUNTIME] run() entered, command={:?}", req.command);
         let session_shell = ctx.session.user_shell();
         let shell = req
             .turn_environment
@@ -332,6 +333,7 @@ impl ToolRuntime<ShellRequest, ExecToolCallOutput> for ShellRuntime {
         let out = execute_env(env, Self::stdout_stream(ctx))
             .await
             .map_err(ToolError::Codex)?;
+        tracing::info!("[SHELL-RUNTIME] execute_env returned, exit_code={}", out.exit_code);
         Ok(out)
     }
 }

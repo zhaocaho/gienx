@@ -438,6 +438,7 @@ pub(crate) async fn execute_exec_request(
     stdout_stream: Option<StdoutStream>,
     after_spawn: Option<Box<dyn FnOnce() + Send>>,
 ) -> Result<ExecToolCallOutput> {
+    tracing::info!("[EXEC] execute_exec_request entered, sandbox={:?} command={:?}", exec_request.sandbox, exec_request.command);
     let ExecRequest {
         command,
         cwd,
@@ -517,8 +518,10 @@ async fn get_raw_output_result(
         &WindowsSandboxFilesystemOverrides,
     >,
 ) -> Result<RawExecToolCallOutput> {
+    tracing::info!("[EXEC] get_raw_output_result entered, sandbox={sandbox:?}");
     #[cfg(target_os = "windows")]
     if sandbox == SandboxType::WindowsRestrictedToken {
+        tracing::info!("[EXEC] routing to exec_windows_sandbox");
         return exec_windows_sandbox(
             params,
             permission_profile,
@@ -529,6 +532,7 @@ async fn get_raw_output_result(
         .await;
     }
 
+    tracing::info!("[EXEC] routing to exec() (non-windows-sandbox path)");
     exec(params, network_sandbox_policy, stdout_stream, after_spawn).await
 }
 
@@ -901,6 +905,7 @@ async fn exec(
     stdout_stream: Option<StdoutStream>,
     after_spawn: Option<Box<dyn FnOnce() + Send>>,
 ) -> Result<RawExecToolCallOutput> {
+    tracing::info!("[EXEC] exec() entered");
     let ExecParams {
         command,
         cwd,
@@ -934,6 +939,7 @@ async fn exec(
         ))
     })?;
     let arg0_ref = arg0.as_deref();
+    tracing::info!("[EXEC] calling spawn_child_async: program={program:?} args={args:?} cwd={cwd:?}");
     let child = spawn_child_async(SpawnChildRequest {
         program: PathBuf::from(program),
         args: args.into(),
@@ -948,9 +954,11 @@ async fn exec(
         env,
     })
     .await?;
+    tracing::info!("[EXEC] spawn_child_async returned successfully, child pid={:?}", child.id());
     if let Some(after_spawn) = after_spawn {
         after_spawn();
     }
+    tracing::info!("[EXEC] entering consume_output");
     consume_output(child, expiration, capture_policy, stdout_stream).await
 }
 
@@ -962,6 +970,7 @@ async fn consume_output(
     capture_policy: ExecCapturePolicy,
     stdout_stream: Option<StdoutStream>,
 ) -> Result<RawExecToolCallOutput> {
+    tracing::info!("[EXEC] consume_output entered, pid={:?}", child.id());
     // Both stdout and stderr were configured with `Stdio::piped()`
     // above, therefore `take()` should normally return `Some`.  If it doesn't
     // we treat it as an exceptional I/O error
@@ -990,6 +999,7 @@ async fn consume_output(
         /*is_stderr*/ true,
         retained_bytes_cap,
     ));
+    tracing::info!("[EXEC] stdout/stderr readers spawned, entering select wait");
 
     let expiration_wait = async {
         if capture_policy.uses_expiration() {
@@ -1056,6 +1066,7 @@ async fn consume_output(
         }
     };
 
+    tracing::info!("[EXEC] consume_output returning: exit_status={:?} timed_out={}", exit_status, timed_out);
     // We need mutable bindings so we can `abort()` them on timeout.
     use tokio::task::JoinHandle;
 

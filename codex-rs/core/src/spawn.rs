@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use std::process::Stdio;
 use tokio::process::Child;
 use tokio::process::Command;
-use tracing::trace;
+// tracing::trace removed - using tracing::info instead
 
 use codex_protocol::permissions::NetworkSandboxPolicy;
 
@@ -60,7 +60,7 @@ pub(crate) async fn spawn_child_async(request: SpawnChildRequest<'_>) -> std::io
         mut env,
     } = request;
 
-    trace!(
+    tracing::info!(
         "spawn_child_async: {program:?} {args:?} {arg0:?} {cwd:?} {network_sandbox_policy:?} {stdio_policy:?} {env:?}"
     );
 
@@ -122,5 +122,11 @@ pub(crate) async fn spawn_child_async(request: SpawnChildRequest<'_>) -> std::io
         }
     }
 
-    cmd.kill_on_drop(true).spawn()
+    tracing::info!("[SPAWN] about to call cmd.spawn() for {program:?}");
+    let spawn_result = cmd.kill_on_drop(true).spawn();
+    match &spawn_result {
+        Ok(child) => tracing::info!("[SPAWN] cmd.spawn() succeeded, pid={:?}", child.id()),
+        Err(e) => tracing::error!("[SPAWN] cmd.spawn() FAILED: {e}"),
+    }
+    spawn_result
 }

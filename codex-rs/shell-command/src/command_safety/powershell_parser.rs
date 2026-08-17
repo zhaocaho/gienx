@@ -25,6 +25,13 @@ const POWERSHELL_PARSER_SCRIPT: &str = include_str!("powershell_parser.ps1");
 /// request/response protocol over a single stdin/stdout pair, so callers targeting the same
 /// executable must serialize access anyway.
 pub(super) fn parse_with_powershell_ast(executable: &str, script: &str) -> PowershellParseOutcome {
+    // Windows 7's PowerShell 2.0 cannot reliably run the EncodedCommand parser
+    // child process; the spawned powershell.exe hangs and blocks the agent forever.
+    // Skip AST-based safety parsing on Win7 and fall through to the generic
+    // command-safety path instead.
+    if is_windows_7_or_older() {
+        return PowershellParseOutcome::Failed;
+    }
     static PARSER_PROCESSES: LazyLock<Mutex<HashMap<String, PowershellParserProcess>>> =
         LazyLock::new(|| Mutex::new(HashMap::new()));
 
@@ -262,6 +269,54 @@ impl PowershellParserResponse {
 fn kill_child(child: &mut Child) {
     let _ = child.kill();
     let _ = child.wait();
+}
+
+/// Returns true when running on Windows 7 (build 7601) or older.
+/// PowerShell 2.0 on these systems cannot reliably run the EncodedCommand parser
+/// child process used by this module.
+fn is_windows_7_or_older() -> bool {
+    #[cfg(not(target_os = "windows"))]
+    {
+        return false;
+    }
+    #[cfg(target_os = "windows")]
+    {
+        use std::sync::OnceLock;
+        static RESULT: OnceLock<bool> = OnceLock::new();
+        *RESULT.get_or_init(|| {
+            // RtlGetVersion is available on all Windows versions and does not
+            // require a manifest to report the real OS version.
+            #[repr(C)]
+            struct OsVersionInfo {
+                dw_os_version_info_size: u32,
+                dw_major_version: u32,
+                dw_minor_version: u32,
+                dw_build_number: u32,
+                dw_platform_id: u32,
+                sz_csd_version: [u16; 128],
+            }
+            unsafe extern "system" {
+                fn RtlGetVersion(info: *mut OsVersionInfo) -> i32;
+            }
+            let mut info = OsVersionInfo {
+                dw_os_version_info_size: std::mem::size_of::<OsVersionInfo>() as u32,
+                dw_major_version: 0,
+                dw_minor_version: 0,
+                dw_build_number: 0,
+                dw_platform_id: 0,
+                sz_csd_version: [0; 128],
+            };
+            let status = unsafe { RtlGetVersion(&mut info) };
+            if status != 0 {
+                return false;
+            }
+            // Windows 7 = major 6, minor 1, build 7601
+            // Windows Vista = major 6, minor 0
+            // Windows 8+ = major 6 minor 2+ or major 10
+            info.dw_major_version < 6
+                || (info.dw_major_version == 6 && info.dw_minor_version <= 1)
+        })
+    }
 }
 
 #[cfg(all(test, windows))]

@@ -142,10 +142,12 @@ impl ToolOrchestrator {
     where
         T: ToolRuntime<Rq, Out>,
     {
+        tracing::info!("[ORCHESTRATOR] run() entered, approval_policy={approval_policy:?}");
         let otel = turn_ctx.session_telemetry.clone();
         let otel_tn = flat_tool_name(&tool_ctx.tool_name).into_owned();
         let otel_ci = &tool_ctx.call_id;
         let strict_auto_review = tool_ctx.session.strict_auto_review_enabled_for_turn().await;
+        tracing::info!("[ORCHESTRATOR] strict_auto_review resolved: {strict_auto_review}");
         let use_guardian = routes_approval_to_guardian(turn_ctx) || strict_auto_review;
 
         // 1) Approval
@@ -156,6 +158,7 @@ impl ToolOrchestrator {
         let requirement = tool.exec_approval_requirement(req).unwrap_or_else(|| {
             default_exec_approval_requirement(approval_policy, &file_system_sandbox_policy)
         });
+        tracing::info!("[ORCHESTRATOR] entering approval phase, requirement={:?}", requirement);
         match &requirement {
             ExecApprovalRequirement::Skip { .. } => {
                 if strict_auto_review {

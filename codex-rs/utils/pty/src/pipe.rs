@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+﻿use std::collections::HashMap;
 use std::io;
 use std::io::ErrorKind;
 use std::path::Path;
@@ -93,8 +93,8 @@ where
     let mut buf = vec![0u8; 8_192];
     loop {
         match reader.read(&mut buf).await {
-            Ok(0) => break,
-            Ok(n) => {
+            Ok(0) => { log::info!("[PIPE] stdout EOF"); break; }
+            Ok(n) => { log::info!("[PIPE] read {n} bytes");
                 let _ = output_tx.send(buf[..n].to_vec()).await;
             }
             Err(ref e) if e.kind() == ErrorKind::Interrupted => continue,
@@ -121,6 +121,8 @@ async fn spawn_process_with_stdin_mode(
     if program.is_empty() {
         anyhow::bail!("missing program for pipe spawn");
     }
+
+    log::info!("[PIPE] spawn_process: program={program}, args={args:?}, cwd={cwd:?}, stdin_mode=Piped");
 
     #[cfg(not(unix))]
     let _ = inherited_fds;
@@ -165,10 +167,12 @@ async fn spawn_process_with_stdin_mode(
     command.stdout(Stdio::piped());
     command.stderr(Stdio::piped());
 
+    log::info!("[PIPE] spawning child process...");
     let mut child = command.spawn()?;
     let pid = child
         .id()
         .ok_or_else(|| io::Error::other("missing child pid"))?;
+    log::info!("[PIPE] child spawned, pid={pid}");
     #[cfg(unix)]
     let process_group_id = pid;
 
@@ -226,7 +230,7 @@ async fn spawn_process_with_stdin_mode(
     let exit_code = Arc::new(StdMutex::new(None));
     let wait_exit_code = Arc::clone(&exit_code);
     let wait_handle: JoinHandle<()> = tokio::spawn(async move {
-        let code = match child.wait().await {
+        log::info!("[PIPE] waiting for child to exit..."); let code = match child.wait().await {
             Ok(status) => exit_code_from_status(status),
             Err(_) => -1,
         };
@@ -234,7 +238,7 @@ async fn spawn_process_with_stdin_mode(
         if let Ok(mut guard) = wait_exit_code.lock() {
             *guard = Some(code);
         }
-        let _ = exit_tx.send(code);
+        log::info!("[PIPE] child exited with code={code}"); let _ = exit_tx.send(code);
     });
 
     let handle = ProcessHandle::new(

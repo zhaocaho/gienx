@@ -176,8 +176,11 @@ async fn spawn_process_portable(
     arg0: &Option<String>,
     size: TerminalSize,
 ) -> Result<SpawnedProcess> {
+    log::info!("[PTY] spawn_process_portable: program={program}, args={args:?}, cwd={cwd:?}, size={size:?}");
     let pty_system = platform_native_pty_system();
+    log::info!("[PTY] opening pty...");
     let pair = pty_system.openpty(size.into())?;
+    log::info!("[PTY] pty opened successfully");
 
     let mut command_builder = CommandBuilder::new(arg0.as_ref().unwrap_or(&program.to_string()));
     command_builder.cwd(cwd);

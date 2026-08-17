@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+﻿use std::collections::HashMap;
 use std::collections::HashSet;
 use std::collections::VecDeque;
 use std::collections::hash_map::Entry;
@@ -240,7 +240,7 @@ impl LocalProcess {
             );
         }
 
-        let spawned_result = if params.tty {
+        tracing::info!("[EXEC] spawning process: tty={}, pipe_stdin={}, program={program}", params.tty, params.pipe_stdin); let spawned_result = if params.tty {
             codex_utils_pty::spawn_pty_process(
                 program,
                 args,
