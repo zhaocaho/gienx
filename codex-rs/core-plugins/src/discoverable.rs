@@ -45,6 +45,7 @@ const TOOL_SUGGEST_DISCOVERABLE_PLUGIN_ALLOWLIST: &[&str] = &[
     "figma@openai-curated-remote",
     "chrome@openai-bundled",
     "computer-use@openai-bundled",
+    "browser@openai-bundled",
 ];
 
 #[derive(Debug, Clone)]

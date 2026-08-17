@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 #
-# 下载 gienx 的二进制(mac arm / mac intel / windows / linux)，
+# 下载 gienx 的二进制(mac arm / mac intel / windows / linux x64)，
 # 解压后只保留 gienx 二进制本身(保持原名 gienx / gienx.exe)，
 # 按平台分到各自子目录里，丢弃 CHANGELOG/LICENSE/README。
+# 麒麟 V10 SP1 ARM64 另下完整包（gienx + bwrap + rg），放到 linux-aarch64-kylin-v10/。
 #
 # 默认下载最新的 release；若仓库只有预发布版本(无正式 release)，
 # 则回退到 releases 列表的第一个(最新预发布)。
@@ -104,7 +105,7 @@ for entry in "${PLATFORMS[@]}"; do
   i=$((i+1))
   url="https://github.com/${REPO}/releases/download/${VERSION}/${archive}"
 
-  echo "[$i/4] $plat_dir/$bin_name  ←  $archive"
+  echo "[$i/${#PLATFORMS[@]}] $plat_dir/$bin_name  ←  $archive"
   # 下载（--retry-all-errors: SSL_ERROR_SYSCALL 等连接级错误也重试）
   curl -fL --retry 5 --retry-all-errors --retry-delay 2 --connect-timeout 30 -o "$WORK/$archive" "$url"
 
@@ -159,6 +160,22 @@ for entry in "${EXTRA_WINDOWS[@]}"; do
   cp "$found" "$WIN_DIR/$bin_name"
   echo "  ✓ $WIN_DIR/$bin_name  ($(du -h "$WIN_DIR/$bin_name" | cut -f1))"
 done
+echo
+
+# ---- 麒麟 V10 SP1 ARM64 完整包（glibc 2.31 + bundled bwrap/rg）----
+# 独立 workflow 产出，老 tag 可能没有。失败只告警。
+KYLIN_ARCHIVE="gienx-kylin-v10-aarch64-unknown-linux-gnu.tar.xz"
+KYLIN_DIR="$OUT_DIR/linux-aarch64-kylin-v10"
+url="https://github.com/${REPO}/releases/download/${VERSION}/${KYLIN_ARCHIVE}"
+echo "[kylin] linux-aarch64-kylin-v10/  ←  $KYLIN_ARCHIVE"
+if curl -fL --retry 5 --retry-all-errors --retry-delay 2 --connect-timeout 30 -o "$WORK/$KYLIN_ARCHIVE" "$url"; then
+  mkdir -p "$KYLIN_DIR"
+  tar -xf "$WORK/$KYLIN_ARCHIVE" -C "$KYLIN_DIR"
+  echo "  ✓ $KYLIN_DIR  (bin/gienx + codex-resources/bwrap + codex-path/rg)"
+  ls -lh "$KYLIN_DIR/bin/gienx" "$KYLIN_DIR/codex-resources/bwrap" "$KYLIN_DIR/codex-path/rg" 2>/dev/null || true
+else
+  echo "  ⚠ 未找到 $KYLIN_ARCHIVE（该版本可能尚未打麒麟包，跳过）。"
+fi
 echo
 
 echo "完成。二进制已放在: $OUT_DIR/"
