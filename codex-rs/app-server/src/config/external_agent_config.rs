@@ -1,6 +1,5 @@
 use codex_config::types::PluginConfig;
 use codex_core::config::Config;
-use codex_utils_absolute_path::BRAND_HOME_DIR_SEGMENT;
 use codex_core::config::ConfigBuilder;
 use codex_core_plugins::PluginInstallRequest;
 use codex_core_plugins::PluginsManager;
@@ -22,6 +21,7 @@ use codex_external_agent_sessions::ExternalAgentSessionMigration;
 use codex_external_agent_sessions::detect_recent_sessions;
 use codex_plugin::PluginId;
 use codex_protocol::protocol::Product;
+use codex_utils_absolute_path::BRAND_HOME_DIR_SEGMENT;
 use serde_json::Value as JsonValue;
 use std::collections::BTreeMap;
 use std::collections::HashMap;

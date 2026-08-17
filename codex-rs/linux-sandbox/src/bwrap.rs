@@ -1936,7 +1936,9 @@ mod tests {
             },
             FileSystemSandboxEntry {
                 path: FileSystemPath::Special {
-                    value: FileSystemSpecialPath::project_roots(Some(BRAND_HOME_DIR_SEGMENT.into())),
+                    value: FileSystemSpecialPath::project_roots(Some(
+                        BRAND_HOME_DIR_SEGMENT.into(),
+                    )),
                 },
                 access: FileSystemAccessMode::Read,
             },

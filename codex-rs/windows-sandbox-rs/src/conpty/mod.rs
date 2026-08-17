@@ -15,8 +15,8 @@ use anyhow::Result;
 use codex_utils_pty::PsuedoCon;
 use codex_utils_pty::RawConPty;
 use std::collections::HashMap;
-use std::ffi::c_void;
 use std::ffi::CString;
+use std::ffi::c_void;
 use std::os::windows::io::IntoRawHandle;
 use std::path::Path;
 use std::sync::OnceLock;
@@ -182,8 +182,7 @@ pub fn spawn_conpty_process_as_user(
 // quiet no‑op (the caller is expected to have already avoided the TTY path via
 // `conpty_supported()`).
 
-type FnResizePseudoConsole =
-    unsafe extern "system" fn(HANDLE, COORD) -> i32;
+type FnResizePseudoConsole = unsafe extern "system" fn(HANDLE, COORD) -> i32;
 
 static RESIZE_PSEUDO_CONSOLE_FN: OnceLock<Option<FnResizePseudoConsole>> = OnceLock::new();
 
@@ -205,10 +204,7 @@ pub fn try_resize_pseudoconsole(hpc: HANDLE, size: COORD) -> i32 {
         };
         let farproc = GetProcAddress(h_module, proc_name.as_ptr() as *const u8);
         farproc.map(|p| {
-            std::mem::transmute::<
-                unsafe extern "system" fn() -> isize,
-                FnResizePseudoConsole,
-            >(p)
+            std::mem::transmute::<unsafe extern "system" fn() -> isize, FnResizePseudoConsole>(p)
         })
     });
 

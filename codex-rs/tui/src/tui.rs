@@ -1103,9 +1103,9 @@ impl Tui {
 
 #[cfg(windows)]
 fn ensure_virtual_terminal_processing() -> Result<()> {
+    use windows_sys::Win32::Foundation::GetLastError;
     use windows_sys::Win32::Foundation::HANDLE;
     use windows_sys::Win32::Foundation::INVALID_HANDLE_VALUE;
-    use windows_sys::Win32::Foundation::GetLastError;
     use windows_sys::Win32::System::Console::ENABLE_PROCESSED_OUTPUT;
     use windows_sys::Win32::System::Console::ENABLE_VIRTUAL_TERMINAL_PROCESSING;
     use windows_sys::Win32::System::Console::GetConsoleMode;

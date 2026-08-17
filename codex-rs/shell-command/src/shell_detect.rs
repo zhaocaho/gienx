@@ -273,6 +273,16 @@ pub fn default_user_shell() -> DetectedShell {
 }
 
 pub fn default_user_shell_from_path(user_shell_path: Option<PathBuf>) -> DetectedShell {
+    // Prefer the user-configured shell path on all platforms (including Windows),
+    // so that an explicit shell choice is honored instead of being overridden.
+    if let Some(ref shell_path) = user_shell_path {
+        if let Some(shell_type) = detect_shell_type(shell_path) {
+            if let Some(shell) = get_shell(shell_type, Some(shell_path)) {
+                return shell;
+            }
+        }
+    }
+
     if cfg!(windows) {
         get_shell(ShellType::PowerShell, /*path*/ None).unwrap_or_else(ultimate_fallback_shell)
     } else {

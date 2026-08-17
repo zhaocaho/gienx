@@ -135,7 +135,13 @@ fn derive_exec_args() {
     };
     assert_eq!(
         test_powershell_shell.derive_exec_args("echo hello", /*use_login_shell*/ false),
-        vec!["pwsh.exe", "-NoProfile", "-Command", "echo hello"]
+        vec![
+            "pwsh.exe",
+            "-NoProfile",
+            "-NonInteractive",
+            "-Command",
+            "echo hello"
+        ]
     );
     assert_eq!(
         test_powershell_shell.derive_exec_args("echo hello", /*use_login_shell*/ true),

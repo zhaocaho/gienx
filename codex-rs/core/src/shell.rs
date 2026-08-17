@@ -33,6 +33,7 @@ impl Shell {
                 let mut args = vec![self.shell_path.to_string_lossy().to_string()];
                 if !use_login_shell {
                     args.push("-NoProfile".to_string());
+                    args.push("-NonInteractive".to_string());
                 }
 
                 args.push("-Command".to_string());
