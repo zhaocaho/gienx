@@ -1,4 +1,4 @@
-use super::*;
+﻿use super::*;
 use pretty_assertions::assert_eq;
 
 struct TestHandler {
@@ -287,6 +287,7 @@ async fn spawn_agent_function_tools_use_agent_matcher_alias() {
     );
 }
 
+#[cfg(feature = "code-mode-runtime")]
 #[tokio::test]
 async fn code_mode_wait_does_not_expose_default_hook_payloads() {
     let (session, turn) = crate::session::tests::make_session_and_context().await;

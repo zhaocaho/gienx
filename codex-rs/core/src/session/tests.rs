@@ -1,4 +1,4 @@
-use super::turn_context::TurnEnvironment;
+﻿use super::turn_context::TurnEnvironment;
 use super::*;
 use crate::codex_thread::TryStartTurnIfIdleRejectionReason;
 use crate::config::ConfigBuilder;
@@ -5183,6 +5183,7 @@ pub(crate) async fn make_session_and_context() -> (Session, TurnContext) {
             /*item_ids_enabled*/ config.features.enabled(Feature::ItemIds),
             /*attestation_provider*/ None,
         ),
+        #[cfg(feature = "code-mode-runtime")]
         code_mode_service: crate::tools::code_mode::CodeModeService::new(),
         tool_search_handler_cache: Default::default(),
         turn_environments: Arc::clone(&turn_environments),
@@ -7248,6 +7249,7 @@ where
             /*item_ids_enabled*/ config.features.enabled(Feature::ItemIds),
             /*attestation_provider*/ None,
         ),
+        #[cfg(feature = "code-mode-runtime")]
         code_mode_service: crate::tools::code_mode::CodeModeService::new(),
         tool_search_handler_cache: Default::default(),
         turn_environments: Arc::clone(&turn_environments),

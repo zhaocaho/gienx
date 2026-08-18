@@ -22,3 +22,6 @@ tracing = { workspace = true, features = ["log"] }
 
 [dev-dependencies]
 pretty_assertions = { workspace = true }
+
+[features]
+win7-compat = []

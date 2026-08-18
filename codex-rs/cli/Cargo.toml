@@ -104,3 +104,12 @@ predicates = { workspace = true }
 pretty_assertions = { workspace = true }
 sqlx = { workspace = true }
 wiremock = { workspace = true }
+
+[features]
+code-mode-runtime = ["codex-core/code-mode-runtime"]
+win7-compat = [
+    "codex-features/win7-compat",
+    "codex-tui/win7-compat",
+    "codex-core/win7-compat",
+    "codex_windows_sandbox/win7-compat",
+]

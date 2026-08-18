@@ -237,8 +237,15 @@ impl ExecCommandHandler {
         let shell_type = resolved_command.shell_type;
         let command_for_display = codex_shell_command::parse_command::shlex_join(&command);
 
+        // ConPTY requires Windows 10 1809+. On older Windows (e.g. Win7),
+        // force pipe mode even when the model requests a TTY.
+        #[cfg(feature = "win7-compat")]
+        let tty = args.tty && codex_utils_pty::conpty_supported();
+        #[cfg(not(feature = "win7-compat"))]
+        let tty = args.tty;
+
         let ExecCommandArgs {
-            tty,
+            tty: _,
             yield_time_ms,
             max_output_tokens,
             sandbox_permissions,

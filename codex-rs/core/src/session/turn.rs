@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+﻿use std::collections::HashMap;
 use std::collections::HashSet;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -1143,12 +1143,15 @@ async fn run_sampling_request(
         Arc::clone(&turn_context),
         Arc::clone(&turn_diff_tracker),
     );
+    #[cfg(feature = "code-mode-runtime")]
     let _code_mode_worker = sess.services.code_mode_service.start_turn_worker(
         &sess,
         &turn_context,
         Arc::clone(&router),
         Arc::clone(&turn_diff_tracker),
     );
+    #[cfg(not(feature = "code-mode-runtime"))]
+    let _code_mode_worker: () = ();
     let max_retries = turn_context.provider.info().stream_max_retries();
     let mut retries = 0;
     let mut initial_input = Some(input);

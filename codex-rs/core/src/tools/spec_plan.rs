@@ -1,11 +1,14 @@
-use crate::agent::exceeds_thread_spawn_depth_limit;
+﻿use crate::agent::exceeds_thread_spawn_depth_limit;
 use crate::agent::next_thread_spawn_depth;
 use crate::session::turn_context::TurnContext;
+#[cfg(feature = "code-mode-runtime")]
 use crate::tools::code_mode::execute_spec::create_code_mode_tool;
 use crate::tools::context::ToolInvocation;
 use crate::tools::effective_tool_mode;
 use crate::tools::handlers::ApplyPatchHandler;
+#[cfg(feature = "code-mode-runtime")]
 use crate::tools::handlers::CodeModeExecuteHandler;
+#[cfg(feature = "code-mode-runtime")]
 use crate::tools::handlers::CodeModeWaitHandler;
 use crate::tools::handlers::CurrentTimeHandler;
 use crate::tools::handlers::DynamicToolHandler;
@@ -81,6 +84,7 @@ use codex_tools::ToolSearchInfo;
 use codex_tools::ToolSpec;
 use codex_tools::UnifiedExecShellMode;
 use codex_tools::can_request_original_image_detail;
+#[cfg(feature = "code-mode-runtime")]
 use codex_tools::collect_code_mode_exec_prompt_tool_definitions;
 use codex_tools::collect_request_plugin_install_entries;
 use codex_tools::default_namespace_description;
@@ -472,6 +476,7 @@ fn is_excluded_from_code_mode(turn_context: &TurnContext, tool_name: &ToolName) 
     })
 }
 
+#[cfg(feature = "code-mode-runtime")]
 fn build_code_mode_executors(
     turn_context: &TurnContext,
     executors: &[Arc<dyn CoreToolRuntime>],
@@ -964,9 +969,16 @@ fn prepend_code_mode_executors(
     context: &CoreToolPlanContext<'_>,
     planned_tools: &mut PlannedTools,
 ) {
-    let turn_context = context.turn_context;
-    let code_mode_executors = build_code_mode_executors(turn_context, planned_tools.runtimes());
-    planned_tools.runtimes.splice(0..0, code_mode_executors);
+    #[cfg(feature = "code-mode-runtime")]
+    {
+        let turn_context = context.turn_context;
+        let code_mode_executors = build_code_mode_executors(turn_context, planned_tools.runtimes());
+        planned_tools.runtimes.splice(0..0, code_mode_executors);
+    }
+    #[cfg(not(feature = "code-mode-runtime"))]
+    {
+        let _ = (context, planned_tools);
+    }
 }
 
 fn append_extension_tool_executors(

@@ -101,3 +101,6 @@ pretty_assertions = { workspace = true }
 # 打包 gienx-windows-sandbox-setup.exe / gienx-command-runner.exe 两个二进制。
 [package.metadata.dist]
 dist = false
+
+[features]
+win7-compat = []

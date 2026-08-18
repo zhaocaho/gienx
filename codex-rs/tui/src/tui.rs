@@ -175,7 +175,14 @@ mod tests {
 pub fn set_modes() -> Result<()> {
     ensure_virtual_terminal_processing()?;
 
-    execute!(stdout(), EnableBracketedPaste)?;
+    // Bracketed paste is not available on legacy Windows consoles (Win7).
+    // Attempt to enable it, but continue gracefully if unsupported.
+    if let Err(err) = execute!(stdout(), EnableBracketedPaste) {
+        #[cfg(feature = "win7-compat")]
+        tracing::warn!("bracketed paste not supported, continuing without it: {err}");
+        #[cfg(not(feature = "win7-compat"))]
+        return Err(err);
+    }
 
     enable_raw_mode()?;
     // Enable keyboard enhancement flags so modifiers for keys like Enter are disambiguated.
@@ -248,7 +255,16 @@ fn restore_common(
     raw_mode_restore: RawModeRestore,
     keyboard_restore: KeyboardRestore,
 ) -> Result<()> {
+    #[cfg(feature = "win7-compat")]
+    {
+        // On Win7 legacy consoles, virtual terminal processing is not supported.
+        // Degrade gracefully instead of failing the entire restore.
+        let _ = ensure_virtual_terminal_processing();
+    }
+    #[cfg(not(feature = "win7-compat"))]
     let mut first_error = ensure_virtual_terminal_processing().err();
+    #[cfg(feature = "win7-compat")]
+    let mut first_error: Option<std::io::Error> = None;
 
     match keyboard_restore {
         KeyboardRestore::PopStack => keyboard_modes::restore_keyboard_enhancement_stack(),
@@ -256,6 +272,9 @@ fn restore_common(
     }
 
     if let Err(err) = execute!(stdout(), DisableBracketedPaste) {
+        #[cfg(feature = "win7-compat")]
+        tracing::warn!("failed to disable bracketed paste on exit: {err}");
+        #[cfg(not(feature = "win7-compat"))]
         first_error.get_or_insert(err);
     }
     let _ = execute!(stdout(), DisableFocusChange);
@@ -374,11 +393,26 @@ pub(crate) fn flush_terminal_input_buffer() {}
 
 /// Initialize the terminal (inline viewport; history stays in normal scrollback)
 pub(crate) fn init() -> Result<InitializedTerminal> {
-    if !stdin().is_terminal() {
-        return Err(std::io::Error::other("stdin is not a terminal"));
+    #[cfg(feature = "win7-compat")]
+    {
+        // On Windows 7, is_terminal() may return false even in cmd.exe due to
+        // differences in GetConsoleMode behavior. Be lenient and let crossterm
+        // handle any real terminal issues during initialization.
+        if !stdin().is_terminal() {
+            tracing::warn!("stdin is not a terminal, attempting to continue anyway");
+        }
+        if !stdout().is_terminal() {
+            tracing::warn!("stdout is not a terminal, attempting to continue anyway");
+        }
     }
-    if !stdout().is_terminal() {
-        return Err(std::io::Error::other("stdout is not a terminal"));
+    #[cfg(not(feature = "win7-compat"))]
+    {
+        if !stdin().is_terminal() {
+            return Err(std::io::Error::other("stdin is not a terminal"));
+        }
+        if !stdout().is_terminal() {
+            return Err(std::io::Error::other("stdout is not a terminal"));
+        }
     }
     set_modes()?;
 
@@ -831,6 +865,11 @@ impl Tui {
         if area.bottom() > size.height {
             let scroll_by = area.bottom() - size.height;
             if !terminal_height_shrank {
+                #[cfg(feature = "win7-compat")]
+                let _ = terminal
+                    .backend_mut()
+                    .scroll_region_up(0..area.top(), scroll_by);
+                #[cfg(not(feature = "win7-compat"))]
                 terminal
                     .backend_mut()
                     .scroll_region_up(0..area.top(), scroll_by)?;
@@ -914,6 +953,11 @@ impl Tui {
             area.width = size.width;
             // If the viewport has expanded, scroll everything else up to make room.
             if area.bottom() > size.height {
+                #[cfg(feature = "win7-compat")]
+                let _ = terminal
+                    .backend_mut()
+                    .scroll_region_up(0..area.top(), area.bottom() - size.height);
+                #[cfg(not(feature = "win7-compat"))]
                 terminal
                     .backend_mut()
                     .scroll_region_up(0..area.top(), area.bottom() - size.height)?;
@@ -1091,6 +1135,8 @@ impl Tui {
 
 #[cfg(windows)]
 fn ensure_virtual_terminal_processing() -> Result<()> {
+    #[cfg(feature = "win7-compat")]
+    use windows_sys::Win32::Foundation::GetLastError;
     use windows_sys::Win32::Foundation::HANDLE;
     use windows_sys::Win32::Foundation::INVALID_HANDLE_VALUE;
     use windows_sys::Win32::System::Console::ENABLE_PROCESSED_OUTPUT;
@@ -1117,6 +1163,16 @@ fn ensure_virtual_terminal_processing() -> Result<()> {
         }
 
         if unsafe { SetConsoleMode(handle, mode | requested) } == 0 {
+            #[cfg(feature = "win7-compat")]
+            {
+                // Win7 legacy consoles do not support ENABLE_VIRTUAL_TERMINAL_PROCESSING.
+                // Degrade gracefully instead of failing.
+                tracing::warn!(
+                    "SetConsoleMode failed (virtual terminal not supported on this console): {}",
+                    unsafe { GetLastError() }
+                );
+            }
+            #[cfg(not(feature = "win7-compat"))]
             return Err(std::io::Error::last_os_error());
         }
 
@@ -1124,9 +1180,15 @@ fn ensure_virtual_terminal_processing() -> Result<()> {
     }
 
     let stdout_handle = unsafe { GetStdHandle(STD_OUTPUT_HANDLE) };
+    #[cfg(feature = "win7-compat")]
+    let _ = enable_for_handle(stdout_handle);
+    #[cfg(not(feature = "win7-compat"))]
     enable_for_handle(stdout_handle)?;
 
     let stderr_handle = unsafe { GetStdHandle(STD_ERROR_HANDLE) };
+    #[cfg(feature = "win7-compat")]
+    let _ = enable_for_handle(stderr_handle);
+    #[cfg(not(feature = "win7-compat"))]
     enable_for_handle(stderr_handle)?;
 
     Ok(())

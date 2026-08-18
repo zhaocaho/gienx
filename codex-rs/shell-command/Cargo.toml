@@ -28,3 +28,6 @@ pretty_assertions = { workspace = true }
 
 [lib]
 doctest = false
+
+[features]
+win7-compat = []

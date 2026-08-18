@@ -25,6 +25,14 @@ const POWERSHELL_PARSER_SCRIPT: &str = include_str!("powershell_parser.ps1");
 /// request/response protocol over a single stdin/stdout pair, so callers targeting the same
 /// executable must serialize access anyway.
 pub(super) fn parse_with_powershell_ast(executable: &str, script: &str) -> PowershellParseOutcome {
+    #[cfg(feature = "win7-compat")]
+    {
+        // Win7 上 PowerShell 2.0 的 EncodedCommand 子进程会卡住，直接跳过 AST 解析
+        if is_windows_7_or_older() {
+            return PowershellParseOutcome::Failed;
+        }
+    }
+
     static PARSER_PROCESSES: LazyLock<Mutex<HashMap<String, PowershellParserProcess>>> =
         LazyLock::new(|| Mutex::new(HashMap::new()));
 
@@ -32,6 +40,46 @@ pub(super) fn parse_with_powershell_ast(executable: &str, script: &str) -> Power
         .lock()
         .unwrap_or_else(PoisonError::into_inner);
     parse_with_cached_process(&mut parser_processes, executable, script)
+}
+
+/// Win7 compatibility: detect Windows 7 or older to skip PowerShell AST parsing.
+/// Returns true when running on Windows 7 (build 7601) or older.
+#[cfg(feature = "win7-compat")]
+fn is_windows_7_or_older() -> bool {
+    use std::mem;
+    use std::os::raw::c_long;
+
+    #[repr(C)]
+    struct OsVersionInfoExW {
+        dw_os_version_info_size: u32,
+        dw_major_version: u32,
+        dw_minor_version: u32,
+        dw_build_number: u32,
+        dw_platform_id: u32,
+        sz_csd_version: [u16; 128],
+        w_service_pack_major: u16,
+        w_service_pack_minor: u16,
+        w_suite_mask: u16,
+        w_product_type: u8,
+        w_reserved: u8,
+    }
+
+    type NtStatus = c_long;
+    const STATUS_SUCCESS: NtStatus = 0;
+
+    #[link(name = "ntdll")]
+    unsafe extern "system" {
+        fn RtlGetVersion(version_info: *mut OsVersionInfoExW) -> NtStatus;
+    }
+
+    let mut info: OsVersionInfoExW = unsafe { mem::zeroed() };
+    info.dw_os_version_info_size = mem::size_of::<OsVersionInfoExW>() as u32;
+    let status = unsafe { RtlGetVersion(&mut info) };
+    if status != STATUS_SUCCESS {
+        return false;
+    }
+    // Windows 7 = 6.1, Windows 8 = 6.2, Windows 10 = 10.0
+    info.dw_major_version < 6 || (info.dw_major_version == 6 && info.dw_minor_version < 2)
 }
 
 pub(crate) fn try_parse_powershell_ast_commands(
