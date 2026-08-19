@@ -348,6 +348,216 @@ dumpbin /imports target/x86_64-win7-windows-msvc/debug/gienx.exe | Select-String
 # 应该无输出
 ```
 
+---
+
+## 九、完整编译命令（新电脑首次构建）
+
+### 9.1 环境准备
+
+```powershell
+# 1. 安装 Rust（从 https://rustup.rs 下载 rustup-init.exe）
+# 2. 安装 nightly 工具链
+rustup toolchain install nightly
+
+# 3. 安装 rust-src 组件（-Z build-std 需要）
+rustup component add rust-src --toolchain nightly
+
+# 4. 安装 Visual Studio Build Tools
+# 下载：https://visualstudio.microsoft.com/visual-cpp-build-tools/
+# 勾选"使用 C++ 的桌面开发"工作负载
+```
+
+### 9.2 克隆代码
+
+```bash
+git clone <repository-url>
+cd gienx
+git checkout win7-compatable-v2
+```
+
+### 9.3 下载依赖并应用 Patch
+
+```powershell
+cd codex-rs
+
+# 下载依赖
+cargo fetch
+
+# 应用 Win7 兼容 Patch（必须！）
+powershell -ExecutionPolicy Bypass -File patches\win7\apply-patches.ps1
+```
+
+### 9.4 编译
+
+```powershell
+$env:RUSTC_BOOTSTRAP = "1"
+cargo +nightly build --bin gienx --features win7-compat --target x86_64-win7-windows-msvc -Z build-std
+```
+
+### 9.5 验证
+
+```powershell
+# 检查 PE 导入表（必须通过）
+dumpbin /imports target/x86_64-win7-windows-msvc/debug/gienx.exe | Select-String "ResizePseudoConsole"
+# 应该无输出
+
+dumpbin /imports target/x86_64-win7-windows-msvc/debug/gienx.exe | Select-String "combase"
+# 应该无输出
+
+# 检查 CRT 依赖（应该无 vcruntime140.dll）
+dumpbin /dependents target/x86_64-win7-windows-msvc/debug/gienx.exe | Select-String "vcruntime"
+# 应该无输出
+```
+
+---
+
+## 十、故障排查指南
+
+### 10.1 编译阶段问题
+
+#### 问题 1：`x86_64-win7-windows-msvc` target not found
+
+**原因**：未安装 nightly 工具链
+
+**解决**：
+```powershell
+rustup toolchain install nightly
+rustup component add rust-src --toolchain nightly
+```
+
+#### 问题 2：`rust-src` component not found
+
+**原因**：未安装 rust-src 组件
+
+**解决**：
+```powershell
+rustup component add rust-src --toolchain nightly-x86_64-pc-windows-msvc
+```
+
+#### 问题 3：链接器找不到 `windows.0.48.5.lib`
+
+**原因**：未应用 `windows_x86_64_msvc-0.48.5/build.rs` patch
+
+**解决**：
+```powershell
+powershell -ExecutionPolicy Bypass -File patches\win7\apply-patches.ps1
+```
+
+#### 问题 4：`combase.dll` 链接失败
+
+**原因**：未应用 windows-core patch
+
+**解决**：
+```powershell
+powershell -ExecutionPolicy Bypass -File patches\win7\apply-patches.ps1
+```
+
+### 10.2 运行阶段问题
+
+#### 问题 1：Entry Point Not Found - ResizePseudoConsole
+
+**错误信息**：
+```
+The procedure entry point ResizePseudoConsole could not be located
+in the dynamic link library kernel32.dll.
+```
+
+**原因**：代码中静态导入了 `ResizePseudoConsole`
+
+**排查**：
+```powershell
+dumpbin /imports target/x86_64-win7-windows-msvc/debug/gienx.exe | Select-String "ResizePseudoConsole"
+```
+
+**解决**：检查以下文件是否有静态导入：
+- `windows-sandbox-rs/src/unified_exec/backends/legacy.rs`
+- `windows-sandbox-rs/src/bin/command_runner/win.rs`
+
+必须使用 `crate::conpty::try_resize_pseudoconsole()` 动态加载。
+
+#### 问题 2：Entry Point Not Found - CoIncrementMTAUsage
+
+**错误信息**：
+```
+The procedure entry point CoIncrementMTAUsage could not be located
+in the dynamic link library combase.dll.
+```
+
+**原因**：未应用 windows-core patch 或 patch 失效
+
+**解决**：
+```powershell
+powershell -ExecutionPolicy Bypass -File patches\win7\apply-patches.ps1
+```
+
+#### 问题 3：找不到 vcruntime140.dll
+
+**错误信息**：
+```
+无法启动此程序，因为计算机中丢失 vcruntime140.dll
+```
+
+**原因**：CRT 未静态链接
+
+**排查**：
+```powershell
+dumpbin /dependents target/x86_64-win7-windows-msvc/debug/gienx.exe | Select-String "vcruntime"
+```
+
+**解决**：检查 `.cargo/config.toml` 是否包含：
+```toml
+[target.'cfg(all(windows, target_env = "msvc"))']
+rustflags = ["-C", "link-arg=/STACK:8388608", "-C", "target-feature=+crt-static"]
+```
+
+### 10.3 升级后问题
+
+#### 问题 1：上游升级后编译失败
+
+**排查步骤**：
+1. 检查 `Cargo.lock` 中 windows crate 版本是否变化
+   ```bash
+   git diff HEAD -- codex-rs/Cargo.lock | grep "windows"
+   ```
+2. 如果版本变化，重新应用 patch
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File patches\win7\apply-patches.ps1
+   ```
+3. 如果 patch 失效，手动更新 patch 文件
+
+#### 问题 2：上游重构了 ConPTY 相关代码
+
+**排查步骤**：
+1. 检查是否有新的静态导入
+   ```powershell
+   rg "ResizePseudoConsole" codex-rs/ --type rust
+   ```
+2. 确保所有调用都使用 `try_resize_pseudoconsole()`
+
+---
+
+## 十一、快速验证清单
+
+编译完成后，运行以下命令验证：
+
+```powershell
+# 1. 检查文件是否存在
+Test-Path "target/x86_64-win7-windows-msvc/debug/gienx.exe"
+# 应该返回 True
+
+# 2. 检查 PE 导入表（无 Win10+ API）
+dumpbin /imports target/x86_64-win7-windows-msvc/debug/gienx.exe | Select-String "ResizePseudoConsole|combase|CoIncrementMTAUsage"
+# 应该无输出
+
+# 3. 检查 CRT 依赖（无 vcruntime）
+dumpbin /dependents target/x86_64-win7-windows-msvc/debug/gienx.exe | Select-String "vcruntime|api-ms-win-crt"
+# 应该无输出
+
+# 4. 检查依赖列表（只有系统 DLL）
+dumpbin /dependents target/x86_64-win7-windows-msvc/debug/gienx.exe
+# 应该只看到：kernel32.dll, advapi32.dll, ole32.dll, user32.dll 等
+```
+
 ### 8.3 相关文档
 
 | 文档 | 内容 |
@@ -357,56 +567,6 @@ dumpbin /imports target/x86_64-win7-windows-msvc/debug/gienx.exe | Select-String
 | `docs/win7-exec-command-fix.md` | shell_command 卡住问题修复记录 |
 | `docs/win7-installation-requirements.md` | Win7 环境安装要求 |
 | `docs/win7-prerequisites.md` | Win7 前置条件 |
-| `docs/win7-compatibility-impact.md` | Win7 兼容对功能的影响 |
----
-
-## 一、环境准备（新电脑首次构建）
-
-### 1.1 安装 Rust 工具链
-
-```powershell
-# 安装 Rust（从 https://rustup.rs 下载 rustup-init.exe）
-# 安装时选择默认选项即可
-
-# 安装 nightly 工具链（x86_64-win7-windows-msvc 不是标准目标，需要 nightly）
-rustup toolchain install nightly
-
-# 安装 rust-src 组件（-Z build-std 需要）
-rustup component add rust-src --toolchain nightly
-
-# 验证安装
-rustup toolchain list
-# 应该显示 stable 和 nightly
-```
-
-### 1.2 安装 Visual Studio Build Tools
-
-需要 C++ 构建工具来链接 Windows 系统库：
-
-1. 下载 [Visual Studio Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/)
-2. 安装时勾选 **"使用 C++ 的桌面开发"** 工作负载
-3. 确保安装以下组件：
-   - MSVC v143 - VS 2022 C++ x64/x86 生成工具
-   - Windows 10 SDK 或 Windows 11 SDK
-
-### 1.3 验证环境
-
-```powershell
-# 检查 rustc 版本
-rustc --version
-# 应该显示 rustc 1.x.x (nightly)
-
-# 检查 cargo 版本
-cargo --version
-
-# 检查链接器（dumpbin）
-& "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\*\bin\HostX64\x64\dumpbin.exe" /?
-# 应该显示帮助信息
-```
-
----
-
-## 二、方案概述
 
 Win7 兼容方案分为 **三部分**：
 
@@ -421,85 +581,3 @@ Win7 兼容方案分为 **三部分**：
 - Part B 针对**项目源码**，使用条件编译隔离 Win7 逻辑，减少与上游的冲突
 - Part C 针对 **Win10+ 专属 API**，必须动态加载，不能有任何静态导入
 - **最小化改动**：只修改真正需要 Win7 兼容的文件
-
----
-
-## 三、Part A: Cargo Registry Patch（已实现）
----
-
-## 六、完整构建流程（新电脑首次构建）
-
-### 6.1 环境准备
-
-参见第一章"环境准备"。
-
-### 6.2 克隆代码
-
-```bash
-git clone <repository-url>
-cd gienx
-git checkout win7-compatable-v2
-```
-
-### 6.3 下载依赖并应用 Patch
-
-```powershell
-cd codex-rs
-
-# 下载依赖
-cargo fetch
-
-# 应用 Win7 兼容 Patch（必须！）
-powershell -ExecutionPolicy Bypass -File patches\win7\apply-patches.ps1
-```
-
-**这一步不能跳过**，否则：
-- `combase.dll` 在 Win7 上不存在 → 链接失败
-- `CoIncrementMTAUsage` 在 Win7 上不存在 → 链接失败
-- `windows.0.48.5.lib` 找不到 → 链接失败（build.rs 不支持 `x86_64-win7-windows-msvc` 目标）
-
-### 6.4 编译
-
-```powershell
-$env:RUSTC_BOOTSTRAP = "1"
-cargo +nightly build --bin gienx --features win7-compat --target x86_64-win7-windows-msvc -Z build-std
-```
-
-### 6.5 验证
-
-```powershell
-# 检查 PE 导入表（必须通过）
-dumpbin /imports target/x86_64-win7-windows-msvc/debug/gienx.exe | Select-String "ResizePseudoConsole"
-# 应该无输出
-
-dumpbin /imports target/x86_64-win7-windows-msvc/debug/gienx.exe | Select-String "combase"
-# 应该无输出
-```
-
-### 6.6 为什么不能直接 `cargo build`？
-
-| 问题 | 原因 |
-|------|------|
-| `x86_64-win7-windows-msvc` 不是标准目标 | 需要 `nightly` + `-Z build-std` |
-| `windows-core`/`windows`/`windows-sys` crate 静态链接 Win10+ API | 需要 patch 修改为动态加载或兼容 API |
-| `windows_x86_64_msvc-0.48.5` 的 build.rs 不支持 Win7 目标 | 需要 patch 添加目标支持 |
-| `ResizePseudoConsole` 等 ConPTY API 静态导入 | 代码中已改为动态加载，但 patch 仍需要 |
-
----
-
-## 七、Part B: 源码条件编译（已实现）
----
-
-## 八、Part C: ConPTY 动态加载（已实现）
----
-
-## 九、完整升级流程（从上游合并新版本）
----
-
-## 十、v2 分支的优势
----
-
-## 十一、风险评估矩阵
----
-
-## 十二、快速参考
